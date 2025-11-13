@@ -1,0 +1,5 @@
+source venv/bin/activate
+uvicorn app.main:app --reload
+
+alembic init migrations
+alembic upgrade head

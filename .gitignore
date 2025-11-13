@@ -1,0 +1,63 @@
+# PYTHON
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.py.class
+
+# Byte-compiled / optimized files
+*$py.class
+
+# VIRTUAL ENVIRONMENTS
+venv/
+env/
+ENV/
+.venv/
+
+# ENVIRONMENT VARIABLES / SECRETS
+.env
+.env.*
+
+# DEPENDENCY & PACKAGE FILES
+*.egg
+*.egg-info/
+dist/
+build/
+eggs/
+pip-wheel-metadata/
+*.whl
+
+# MIGRATIONS / ALEMBIC CACHE
+migrations/__pycache__/
+migrations/versions/__pycache__/
+
+# IDEs & EDITORS
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+
+# LOGS & TEMP FILES
+*.log
+*.tmp
+*.temp
+*.bak
+
+# OS-SPECIFIC
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# TESTS / COVERAGE
+
+.coverage
+htmlcov/
+.pytest_cache/
+nosetests.xml
+coverage.xml
+
+
+# OTHER TOOLS
+
+# Jupyter notebooks
+.ipynb_checkpoints/
