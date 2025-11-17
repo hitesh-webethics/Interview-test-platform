@@ -1,5 +1,22 @@
 from pydantic import BaseModel
 from datetime import datetime
+from typing import Optional
+
+
+# Login Schema
+class UserLogin(BaseModel):
+    email: str
+    password: str
+
+# Token Response
+class Token(BaseModel):
+    access_token: str
+    token_type: str
+
+# Token Data
+class TokenData(BaseModel):
+    user_id: Optional[int] = None
+
 
 # Role Schemas
 class RoleBase(BaseModel):
@@ -15,7 +32,6 @@ class RoleResponse(RoleBase):
         orm_mode = True
 
 # User Schemas
-
 class UserBase(BaseModel):
     name: str
     email: str
@@ -37,3 +53,24 @@ class UserResponse(UserBase):
 
     class Config:
         orm_mode = True
+
+
+# Category Schemas
+class CategoryBase(BaseModel):
+    name: str
+    description: Optional[str] = None
+
+class CategoryCreate(CategoryBase):
+    pass
+
+class CategoryUpdate(BaseModel):
+    name: Optional[str] = None
+    description: Optional[str] = None
+
+class CategoryResponse(CategoryBase):
+    id: int
+    user_id: int
+    created_at: datetime
+    
+    class Config:
+        from_attributes = True

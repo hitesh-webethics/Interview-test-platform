@@ -12,6 +12,7 @@ class Role(Base):
     # Relationship with next table
     users = relationship("User", back_populates= "role", cascade = "all, delete", passive_deletes = True)
 
+
 # User Table
 class User(Base):
     __tablename__="users"
@@ -28,4 +29,19 @@ class User(Base):
 
     # Relationship (Access roles)
     role = relationship("Role", back_populates = "users")
+    categories = relationship("Category", back_populates="creator")
+
+# Category Table
+class Category(Base):
+    __tablename__ = "categories"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String(100), unique=True, nullable=False)
+    description = Column(Text, nullable=True)
+    user_id = Column(Integer, ForeignKey("users.id"))
+    created_at = Column(TIMESTAMP(timezone=True), server_default=func.now())
+    
+    # Relationships
+    creator = relationship("User", back_populates="categories")
+#   sub_categories = relationship("SubCategory", back_populates="category", cascade="all, delete", passive_deletes=True)
 

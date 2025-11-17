@@ -3,14 +3,16 @@ from pydantic import BaseModel
 from app.models import Base
 from app import models
 from app.database import engine
-from app.routes import roles, users
+from app.routes import auth, roles, users, categories
 
 models.Base.metadata.create_all(bind=engine)
 
 app = FastAPI(title="Interview Test Platform")
 
+app.include_router(auth.router)
 app.include_router(roles.router)
 app.include_router(users.router)
+app.include_router(categories.router)
 
 @app.get("/")
 def read_root():
