@@ -1,7 +1,8 @@
 from pydantic import BaseModel
 from datetime import datetime
-from typing import Optional
-
+from typing import Optional, Dict
+import json
+from enum import Enum
 
 # Login Schema
 class UserLogin(BaseModel):
@@ -29,7 +30,7 @@ class RoleResponse(RoleBase):
     id: int
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 # User Schemas
 class UserBase(BaseModel):
@@ -52,7 +53,7 @@ class UserResponse(UserBase):
     created_at: datetime
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 
 # Category Schemas
@@ -69,6 +70,70 @@ class CategoryUpdate(BaseModel):
 
 class CategoryResponse(CategoryBase):
     id: int
+    user_id: int
+    created_at: datetime
+    
+    class Config:
+        from_attributes = True
+
+# Subcategory Schemas
+class SubcategoryBase(BaseModel):
+    name: str
+    category_id: int
+
+class SubcategoryCreate(SubcategoryBase):
+    pass
+
+class SubcategoryUpdate(BaseModel):
+    name: Optional[str] = None
+    category_id: Optional[int] = None
+
+class SubcategoryResponse(SubcategoryBase):
+    id: int
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+# Difficulty Enum
+class DifficultyEnum(str, Enum):
+    EASY = "Easy"
+    MEDIUM = "Medium"
+    HARD = "Hard"
+
+
+# Question Schemas
+class QuestionBase(BaseModel):
+    category_id: int
+    sub_category_id: Optional[int] = None  # Optional - if None, question is directly under category
+    question_text: str
+    options: Dict[str, str]  # Example: {"a": "Option A", "b": "Option B", "c": "Option C", "d": "Option D"}
+    correct_option: str  # Single character: 'a', 'b', 'c', or 'd'
+    difficulty: DifficultyEnum
+
+
+class QuestionCreate(QuestionBase):
+    pass
+
+
+class QuestionUpdate(BaseModel):
+    category_id: Optional[int] = None
+    sub_category_id: Optional[int] = None
+    question_text: Optional[str] = None
+    options: Optional[Dict[str, str]] = None
+    correct_option: Optional[str] = None
+    difficulty: Optional[DifficultyEnum] = None
+
+
+class QuestionResponse(BaseModel):
+    id: int
+    category_id: int
+    sub_category_id: Optional[int]
+    question_text: str
+    options: Dict[str, str]  # Will be converted from JSON string
+    correct_option: str
+    difficulty: str
     user_id: int
     created_at: datetime
     

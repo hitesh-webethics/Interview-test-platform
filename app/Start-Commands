@@ -3,3 +3,6 @@ uvicorn app.main:app --reload
 
 alembic init migrations
 alembic upgrade head
+alembic downgrade -1
+
+alembic revision --autogenerate -m "Version name or Table name"

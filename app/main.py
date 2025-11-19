@@ -3,7 +3,7 @@ from pydantic import BaseModel
 from app.models import Base
 from app import models
 from app.database import engine
-from app.routes import auth, roles, users, categories
+from app.routes import auth, roles, users, categories, subcategories, questions
 
 models.Base.metadata.create_all(bind=engine)
 
@@ -13,6 +13,8 @@ app.include_router(auth.router)
 app.include_router(roles.router)
 app.include_router(users.router)
 app.include_router(categories.router)
+app.include_router(subcategories.router)
+app.include_router(questions.router)
 
 @app.get("/")
 def read_root():

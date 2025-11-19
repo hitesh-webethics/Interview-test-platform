@@ -29,7 +29,8 @@ class User(Base):
 
     # Relationship (Access roles)
     role = relationship("Role", back_populates = "users")
-    categories = relationship("Category", back_populates="creator")
+    
+    # categories = relationship("Category", back_populates="creator")
 
 # Category Table
 class Category(Base):
@@ -43,5 +44,34 @@ class Category(Base):
     
     # Relationships
     creator = relationship("User", back_populates="categories")
-#   sub_categories = relationship("SubCategory", back_populates="category", cascade="all, delete", passive_deletes=True)
+    
+    # sub_categories = relationship("SubCategory", back_populates="category", cascade="all, delete", passive_deletes=True)
 
+# Subcategory Table
+class Subcategory(Base):
+    __tablename__ = "subcategory"
+
+    id = Column(Integer, primary_key=True, index=True)
+    category_id = Column(Integer, ForeignKey("categories.id"))
+    name = Column(String(100), nullable=False)
+    created_at = Column(TIMESTAMP(timezone=True), server_default=func.now())
+
+    category = relationship("Category", back_populates="subcategory")
+
+# Questions Table
+class Question(Base):
+    __tablename__ = "questions"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    category_id = Column(Integer, ForeignKey("categories.id", ondelete="CASCADE"))
+    sub_category_id = Column(Integer, ForeignKey("subcategory.id", ondelete="SET NULL"), nullable=True)  # Optional
+    question_text = Column(Text, nullable=False)
+    options = Column(Text, nullable=False)  # Stored as JSON string
+    correct_option = Column(String(1), nullable=False)  # Single character: 'a', 'b', 'c', 'd'
+    difficulty = Column(String(20), nullable=False)  # 'Easy', 'Medium', 'Hard'
+    user_id = Column(Integer, ForeignKey("users.id"))
+    created_at = Column(TIMESTAMP(timezone=True), server_default=func.now())
+
+    category = relationship("Category")
+    sub_category = relationship("Subcategory")
+    creator = relationship("User", back_populates="questions")

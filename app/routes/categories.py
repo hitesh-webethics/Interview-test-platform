@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from app import models, schemas
 from app.database import get_db
-from app.auth import get_current_user, require_superadmin
+from app.auth import get_current_user
 
 router = APIRouter(prefix="/categories", tags=["Categories"])
 
