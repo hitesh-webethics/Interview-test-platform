@@ -15,11 +15,7 @@ def create_question(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_user)
 ):
-    """
-    Create new question (SuperAdmin and Admin only)
-    - Can be linked to category only OR category + subcategory
-    - Options stored as JSON string in database
-    """
+    
     # Check if user is SuperAdmin or Admin
     if current_user.role.role_name not in ["SuperAdmin", "Admin"]:
         raise HTTPException(
@@ -93,7 +89,7 @@ def get_questions(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_user)
 ):
-    """Get all questions (requires authentication)"""
+    # Get all questions (requires authentication)
     questions = db.query(models.Question).all()
     
     # Convert options from JSON string to dict for each question
@@ -110,10 +106,7 @@ def get_questions_by_category(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_user)
 ):
-    """
-    Get all questions under a specific category
-    Includes questions directly under category AND under its subcategories
-    """
+    
     # Check if category exists
     category = db.query(models.Category).filter(
         models.Category.id == category_id
@@ -141,7 +134,6 @@ def get_questions_by_subcategory(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_user)
 ):
-    """Get all questions under a specific subcategory"""
     # Check if subcategory exists
     subcategory = db.query(models.Subcategory).filter(
         models.Subcategory.id == subcategory_id
@@ -169,7 +161,7 @@ def get_questions_by_difficulty(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_user)
 ):
-    """Get all questions by difficulty level"""
+    
     questions = db.query(models.Question).filter(
         models.Question.difficulty == difficulty.value
     ).all()
@@ -188,7 +180,7 @@ def get_question(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_user)
 ):
-    """Get question by ID (requires authentication)"""
+    
     db_question = db.query(models.Question).filter(
         models.Question.id == question_id
     ).first()
@@ -210,7 +202,7 @@ def update_question(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_user)
 ):
-    """Update question (SuperAdmin and Admin only)"""
+    
     # Check if user is SuperAdmin or Admin
     if current_user.role.role_name not in ["SuperAdmin", "Admin"]:
         raise HTTPException(
@@ -289,7 +281,7 @@ def delete_question(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_user)
 ):
-    """Delete question (SuperAdmin and Admin only)"""
+    
     # Check if user is SuperAdmin or Admin
     if current_user.role.role_name not in ["SuperAdmin", "Admin"]:
         raise HTTPException(

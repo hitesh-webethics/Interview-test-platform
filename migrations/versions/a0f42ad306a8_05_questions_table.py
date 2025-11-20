@@ -1,8 +1,8 @@
-"""005 Questions Table
+"""05 questions Table
 
-Revision ID: be523bfb2657
-Revises: fd231a31c8f8
-Create Date: 2025-11-19 17:45:01.007755
+Revision ID: a0f42ad306a8
+Revises: 194e447e7eb4
+Create Date: 2025-11-20 12:33:24.268003
 
 """
 from typing import Sequence, Union
@@ -12,8 +12,8 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision: str = 'be523bfb2657'
-down_revision: Union[str, Sequence[str], None] = 'fd231a31c8f8'
+revision: str = 'a0f42ad306a8'
+down_revision: Union[str, Sequence[str], None] = '194e447e7eb4'
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
@@ -32,7 +32,7 @@ def upgrade() -> None:
     sa.Column('user_id', sa.Integer(), nullable=True),
     sa.Column('created_at', sa.TIMESTAMP(timezone=True), server_default=sa.text('now()'), nullable=True),
     sa.ForeignKeyConstraint(['category_id'], ['categories.id'], ondelete='CASCADE'),
-    sa.ForeignKeyConstraint(['sub_category_id'], ['subcategory.id'], ondelete='SET NULL'),
+    sa.ForeignKeyConstraint(['sub_category_id'], ['subcategories.id'], ondelete='SET NULL'),
     sa.ForeignKeyConstraint(['user_id'], ['users.id'], ),
     sa.PrimaryKeyConstraint('id')
     )
