@@ -2,27 +2,19 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from app import models, schemas
 from app.database import get_db
-from app.auth import get_current_user
+from app.auth import get_current_user, require_admin
 import json
 
 router = APIRouter(prefix="/questions", tags=["Questions"])
 
 
-# Create Question - SuperAdmin and Admin only
+# Create Question - Any authenticated user can create
 @router.post("/", response_model=schemas.QuestionResponse)
 def create_question(
     question: schemas.QuestionCreate,
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_user)
 ):
-    
-    # Check if user is SuperAdmin or Admin
-    if current_user.role.role_name not in ["SuperAdmin", "Admin"]:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Only SuperAdmin and Admin can create questions"
-        )
-    
     # Validate category exists
     category = db.query(models.Category).filter(
         models.Category.id == question.category_id
@@ -67,9 +59,9 @@ def create_question(
         category_id=question.category_id,
         sub_category_id=question.sub_category_id,
         question_text=question.question_text,
-        options=options_json,  # Store as JSON string
+        options=options_json,
         correct_option=question.correct_option,
-        difficulty=question.difficulty.value,  # Convert enum to string
+        difficulty=question.difficulty.value,
         user_id=current_user.id
     )
     
@@ -89,7 +81,6 @@ def get_questions(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_user)
 ):
-    # Get all questions (requires authentication)
     questions = db.query(models.Question).all()
     
     # Convert options from JSON string to dict for each question
@@ -106,7 +97,6 @@ def get_questions_by_category(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_user)
 ):
-    
     # Check if category exists
     category = db.query(models.Category).filter(
         models.Category.id == category_id
@@ -161,7 +151,6 @@ def get_questions_by_difficulty(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_user)
 ):
-    
     questions = db.query(models.Question).filter(
         models.Question.difficulty == difficulty.value
     ).all()
@@ -180,7 +169,6 @@ def get_question(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_user)
 ):
-    
     db_question = db.query(models.Question).filter(
         models.Question.id == question_id
     ).first()
@@ -194,7 +182,7 @@ def get_question(
     return db_question
 
 
-# Update question - SuperAdmin and Admin only
+# Update question - Any authenticated user can update
 @router.put("/{question_id}", response_model=schemas.QuestionResponse)
 def update_question(
     question_id: int,
@@ -202,14 +190,6 @@ def update_question(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_user)
 ):
-    
-    # Check if user is SuperAdmin or Admin
-    if current_user.role.role_name not in ["SuperAdmin", "Admin"]:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Only SuperAdmin and Admin can update questions"
-        )
-    
     db_question = db.query(models.Question).filter(
         models.Question.id == question_id
     ).first()
@@ -274,21 +254,13 @@ def update_question(
     return db_question
 
 
-# Delete question - SuperAdmin and Admin only
+# Delete question - Only Admin can delete
 @router.delete("/{question_id}")
 def delete_question(
     question_id: int,
     db: Session = Depends(get_db),
-    current_user: models.User = Depends(get_current_user)
+    current_user: models.User = Depends(require_admin)
 ):
-    
-    # Check if user is SuperAdmin or Admin
-    if current_user.role.role_name not in ["SuperAdmin", "Admin"]:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Only SuperAdmin and Admin can delete questions"
-        )
-    
     db_question = db.query(models.Question).filter(
         models.Question.id == question_id
     ).first()

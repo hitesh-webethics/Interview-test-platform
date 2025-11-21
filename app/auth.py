@@ -72,12 +72,12 @@ def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(
     
     return user
 
-# Check if user is SuperAdmin
-def require_superadmin(current_user: models.User = Depends(get_current_user)):
-    # Dependency to ensure user is SuperAdmin
-    if current_user.role.role_name != "SuperAdmin":
+# Check if user is Admin
+def require_admin(current_user: models.User = Depends(get_current_user)):
+    # Dependency to ensure user is dmin
+    if current_user.role.role_name != "Admin":
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Only SuperAdmin can perform this action"
+            detail="Only Admin can perform this action"
         )
     return current_user

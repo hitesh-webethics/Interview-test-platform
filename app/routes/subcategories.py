@@ -2,28 +2,18 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from app import models, schemas
 from app.database import get_db
-from app.auth import get_current_user
+from app.auth import get_current_user, require_admin
 
 router = APIRouter(prefix="/subcategories", tags=["Subcategories"])
 
 
-# Create Subcategory - SuperAdmin and Admin only
+# Create Subcategory - Any authenticated user can create
 @router.post("/", response_model=schemas.SubcategoryResponse)
 def create_subcategory(
     subcategory: schemas.SubcategoryCreate,
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_user)
 ):
-
-    # Create new subcategory under a category (SuperAdmin and Admin only)
-
-    # Check if user is SuperAdmin or Admin
-    if current_user.role.role_name not in ["SuperAdmin", "Admin"]:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Only SuperAdmin and Admin can create subcategories"
-        )
-    
     # Check if category exists
     category = db.query(models.Category).filter(
         models.Category.id == subcategory.category_id
@@ -65,7 +55,6 @@ def get_subcategories(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_user)
 ):
-    # Get all subcategories (requires authentication)
     return db.query(models.Subcategory).all()
 
 
@@ -76,10 +65,6 @@ def get_subcategories_by_category(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_user)
 ):
-
-    # Get all subcategories under a specific category
-    # Returns empty list if category has no subcategories
-
     # Check if category exists
     category = db.query(models.Category).filter(
         models.Category.id == category_id
@@ -103,7 +88,6 @@ def get_subcategory(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_user)
 ):
-    # Get subcategory by ID (requires authentication)
     db_subcategory = db.query(models.Subcategory).filter(
         models.Subcategory.id == subcategory_id
     ).first()
@@ -114,7 +98,7 @@ def get_subcategory(
     return db_subcategory
 
 
-# Update subcategory - SuperAdmin and Admin only
+# Update subcategory - Any authenticated user can update
 @router.put("/{subcategory_id}", response_model=schemas.SubcategoryResponse)
 def update_subcategory(
     subcategory_id: int,
@@ -122,14 +106,6 @@ def update_subcategory(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_user)
 ):
-
-    # Check if user is SuperAdmin or Admin
-    if current_user.role.role_name not in ["SuperAdmin", "Admin"]:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Only SuperAdmin and Admin can update subcategories"
-        )
-    
     db_subcategory = db.query(models.Subcategory).filter(
         models.Subcategory.id == subcategory_id
     ).first()
@@ -171,21 +147,13 @@ def update_subcategory(
     return db_subcategory
 
 
-# Delete subcategory - SuperAdmin and Admin only
+# Delete subcategory - Only Admin can delete
 @router.delete("/{subcategory_id}")
 def delete_subcategory(
     subcategory_id: int,
     db: Session = Depends(get_db),
-    current_user: models.User = Depends(get_current_user)
+    current_user: models.User = Depends(require_admin)
 ):
-
-    # Check if user is SuperAdmin or Admin
-    if current_user.role.role_name not in ["SuperAdmin", "Admin"]:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Only SuperAdmin and Admin can delete subcategories"
-        )
-    
     db_subcategory = db.query(models.Subcategory).filter(
         models.Subcategory.id == subcategory_id
     ).first()
