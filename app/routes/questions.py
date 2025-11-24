@@ -1,5 +1,6 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
+from typing import Optional
 from app import models, schemas
 from app.database import get_db
 from app.auth import get_current_user, require_admin
@@ -15,6 +16,7 @@ def create_question(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_user)
 ):
+    
     # Validate category exists
     category = db.query(models.Category).filter(
         models.Category.id == question.category_id
@@ -75,87 +77,56 @@ def create_question(
     return db_question
 
 
-# Get all questions - Any authenticated user
+# Get all questions with optional filters - Any authenticated user
 @router.get("/", response_model=list[schemas.QuestionResponse])
 def get_questions(
+    category_id: Optional[int] = Query(None, description="Filter by category ID"),
+    sub_category_id: Optional[int] = Query(None, description="Filter by subcategory ID"),
+    difficulty: Optional[schemas.DifficultyEnum] = Query(None, description="Filter by difficulty: Easy, Medium, or Hard"),
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_user)
 ):
-    questions = db.query(models.Question).all()
+    
+    # Start with base query
+    query = db.query(models.Question)
+    
+    # Apply category filter if provided
+    if category_id is not None:
+        # Validate category exists
+        category = db.query(models.Category).filter(
+            models.Category.id == category_id
+        ).first()
+        if not category:
+            raise HTTPException(status_code=404, detail="Category not found")
+        
+        query = query.filter(models.Question.category_id == category_id)
+    
+    # Apply subcategory filter if provided
+    if sub_category_id is not None:
+        # Validate subcategory exists
+        subcategory = db.query(models.Subcategory).filter(
+            models.Subcategory.id == sub_category_id
+        ).first()
+        if not subcategory:
+            raise HTTPException(status_code=404, detail="Subcategory not found")
+        
+        # If category_id is also provided, ensure subcategory belongs to it
+        if category_id is not None and subcategory.category_id != category_id:
+            raise HTTPException(
+                status_code=400,
+                detail="Subcategory does not belong to the specified category"
+            )
+        
+        query = query.filter(models.Question.sub_category_id == sub_category_id)
+    
+    # Apply difficulty filter if provided
+    if difficulty is not None:
+        query = query.filter(models.Question.difficulty == difficulty.value)
+    
+    # Execute query
+    questions = query.all()
     
     # Convert options from JSON string to dict for each question
-    for question in questions:
-        question.options = json.loads(question.options)
-    
-    return questions
-
-
-# Get questions by category - Any authenticated user
-@router.get("/category/{category_id}", response_model=list[schemas.QuestionResponse])
-def get_questions_by_category(
-    category_id: int,
-    db: Session = Depends(get_db),
-    current_user: models.User = Depends(get_current_user)
-):
-    # Check if category exists
-    category = db.query(models.Category).filter(
-        models.Category.id == category_id
-    ).first()
-    
-    if not category:
-        raise HTTPException(status_code=404, detail="Category not found")
-    
-    # Get all questions for this category
-    questions = db.query(models.Question).filter(
-        models.Question.category_id == category_id
-    ).all()
-    
-    # Convert options from JSON string to dict
-    for question in questions:
-        question.options = json.loads(question.options)
-    
-    return questions
-
-
-# Get questions by subcategory - Any authenticated user
-@router.get("/subcategory/{subcategory_id}", response_model=list[schemas.QuestionResponse])
-def get_questions_by_subcategory(
-    subcategory_id: int,
-    db: Session = Depends(get_db),
-    current_user: models.User = Depends(get_current_user)
-):
-    # Check if subcategory exists
-    subcategory = db.query(models.Subcategory).filter(
-        models.Subcategory.id == subcategory_id
-    ).first()
-    
-    if not subcategory:
-        raise HTTPException(status_code=404, detail="Subcategory not found")
-    
-    # Get all questions for this subcategory
-    questions = db.query(models.Question).filter(
-        models.Question.sub_category_id == subcategory_id
-    ).all()
-    
-    # Convert options from JSON string to dict
-    for question in questions:
-        question.options = json.loads(question.options)
-    
-    return questions
-
-
-# Get questions by difficulty - Any authenticated user
-@router.get("/difficulty/{difficulty}", response_model=list[schemas.QuestionResponse])
-def get_questions_by_difficulty(
-    difficulty: schemas.DifficultyEnum,
-    db: Session = Depends(get_db),
-    current_user: models.User = Depends(get_current_user)
-):
-    questions = db.query(models.Question).filter(
-        models.Question.difficulty == difficulty.value
-    ).all()
-    
-    # Convert options from JSON string to dict
     for question in questions:
         question.options = json.loads(question.options)
     
@@ -169,6 +140,8 @@ def get_question(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_user)
 ):
+    """Get a specific question by ID"""
+    
     db_question = db.query(models.Question).filter(
         models.Question.id == question_id
     ).first()
@@ -182,7 +155,7 @@ def get_question(
     return db_question
 
 
-# Update question - Any authenticated user can update
+# Update question - Admin or creator can update
 @router.put("/{question_id}", response_model=schemas.QuestionResponse)
 def update_question(
     question_id: int,
@@ -190,12 +163,25 @@ def update_question(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_user)
 ):
+    """
+    Update a question
+    - Admin can update any question
+    - Users can update their own questions
+    """
+    
     db_question = db.query(models.Question).filter(
         models.Question.id == question_id
     ).first()
     
     if not db_question:
         raise HTTPException(status_code=404, detail="Question not found")
+    
+    # Check authorization: Admin or creator
+    if current_user.role.role_name != "Admin" and db_question.user_id != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You can only update your own questions"
+        )
     
     # Update category_id if provided
     if question.category_id is not None:
@@ -228,6 +214,12 @@ def update_question(
     
     # Update options if provided
     if question.options is not None:
+        # Validate correct_option still exists in new options if correct_option not being updated
+        if question.correct_option is None and db_question.correct_option not in question.options:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Current correct_option '{db_question.correct_option}' must exist in new options"
+            )
         db_question.options = json.dumps(question.options)
     
     # Update correct_option if provided
@@ -239,6 +231,14 @@ def update_question(
                 status_code=400,
                 detail="correct_option must be one of the option keys"
             )
+        
+        # Validate single character
+        if len(question.correct_option) != 1:
+            raise HTTPException(
+                status_code=400,
+                detail="correct_option must be a single character"
+            )
+        
         db_question.correct_option = question.correct_option
     
     # Update difficulty if provided
@@ -261,6 +261,8 @@ def delete_question(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(require_admin)
 ):
+    """Delete a question (Admin only)"""
+    
     db_question = db.query(models.Question).filter(
         models.Question.id == question_id
     ).first()

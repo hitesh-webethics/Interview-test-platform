@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 from app import models, schemas
 from app.database import get_db
@@ -13,15 +14,18 @@ def create_category(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_user)
 ):
-    # Check if category name already exists
-    existing_category = db.query(models.Category).filter(
-        models.Category.name == category.name
-    ).first()
+    # Trim whitespace
+    category_name = category.name.strip()
     
+    # Case-insensitive uniqueness check
+    existing_category = db.query(models.Category).filter(
+        func.lower(models.Category.name) == func.lower(category_name)
+    ).first()
+
     if existing_category:
         raise HTTPException(
             status_code=400,
-            detail="Category with this name already exists"
+            detail="Category with this name already exists."
         )
     
     # Create category
