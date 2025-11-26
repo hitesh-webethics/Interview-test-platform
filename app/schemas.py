@@ -139,3 +139,33 @@ class QuestionResponse(BaseModel):
     
     class Config:
         from_attributes = True
+
+
+# Test Schemas
+class TestCreate(BaseModel):
+    category_id: int
+    sub_category_id: Optional[int] = None
+    difficulty: list[DifficultyEnum]
+    selected_question_ids: list[int]
+
+class TestResponse(BaseModel):
+    test_id: int
+    test_code: str
+    question_count: int
+    
+    class Config:
+        from_attributes = True
+
+class TestDetailResponse(BaseModel):
+    id: int
+    test_code: str
+    category_id: int
+    sub_category_id: Optional[int]
+    difficulty: list[str]
+    question_ids: list[int]
+    created_by: int
+    created_at: datetime
+    is_active: bool
+    
+    class Config:
+        from_attributes = True

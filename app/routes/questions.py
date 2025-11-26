@@ -140,7 +140,7 @@ def get_question(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_user)
 ):
-    """Get a specific question by ID"""
+    # Get a specific question by ID
     
     db_question = db.query(models.Question).filter(
         models.Question.id == question_id
@@ -163,11 +163,6 @@ def update_question(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_user)
 ):
-    """
-    Update a question
-    - Admin can update any question
-    - Users can update their own questions
-    """
     
     db_question = db.query(models.Question).filter(
         models.Question.id == question_id
@@ -261,7 +256,6 @@ def delete_question(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(require_admin)
 ):
-    """Delete a question (Admin only)"""
     
     db_question = db.query(models.Question).filter(
         models.Question.id == question_id

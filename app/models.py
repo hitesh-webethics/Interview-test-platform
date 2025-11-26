@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, ForeignKey, Text, TIMESTAMP, func
+from sqlalchemy import Column, Integer, String, ForeignKey, Text, TIMESTAMP, Boolean, func
 from sqlalchemy.orm import relationship
 from app.database import Base
 
@@ -43,7 +43,7 @@ class Category(Base):
     # Relationships
     creator = relationship("User", backref="categories")
     
-    sub_categories = relationship("Subcategory", backref="category", cascade="all, delete", passive_deletes=True)
+    # sub_categories = relationship("Subcategory", backref="category", cascade="all, delete", passive_deletes=True)
 
 # Subcategory Table
 class Subcategory(Base):
@@ -55,7 +55,7 @@ class Subcategory(Base):
     created_at = Column(TIMESTAMP(timezone=True), server_default=func.now())
 
     # Relationship
-    # category = relationship("Category", back_populates="subcategories")
+    category = relationship("Category", backref="sub_categories", cascade="all, delete", passive_deletes=True)
 
 # Questions Table
 class Question(Base):
@@ -74,3 +74,22 @@ class Question(Base):
     category = relationship("Category")
     sub_category = relationship("Subcategory")
     creator = relationship("User", backref="questions")
+
+
+# Test Table
+class Test(Base):
+    __tablename__ = "tests"
+
+    id = Column(Integer, primary_key=True, index=True)
+    test_code = Column(String(100), unique=True, nullable=False, index=True)
+    category_id = Column(Integer, ForeignKey("categories.id", ondelete="CASCADE"))
+    sub_category_id = Column(Integer, ForeignKey("subcategories.id", ondelete="SET NULL"), nullable=True)
+    difficulty = Column(Text, nullable=False)
+    question_ids = Column(Text, nullable=False)  # Stored as JSON array
+    user_id = Column(Integer, ForeignKey("users.id"))
+    created_at = Column(TIMESTAMP(timezone=True), server_default=func.now())
+    is_active = Column(Boolean, default=False, nullable=False)
+
+    category = relationship("Category", backref="tests")
+    sub_category = relationship("Subcategory", backref="tests")
+    creator = relationship("User", backref="tests")
