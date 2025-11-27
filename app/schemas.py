@@ -1,6 +1,6 @@
 from pydantic import BaseModel
 from datetime import datetime
-from typing import Optional, Dict
+from typing import Optional, Dict, List
 import json
 from enum import Enum
 
@@ -137,17 +137,33 @@ class QuestionResponse(BaseModel):
     user_id: int
     created_at: datetime
     
+
+class QuestionCategory(BaseModel):
+    id: int
+    name: str
+    subcategory: Optional[str] = None
+    
     class Config:
         from_attributes = True
 
 
 # Test Schemas
-class TestCreate(BaseModel):
-    category_id: int
-    sub_category_id: Optional[int] = None
-    difficulty: list[DifficultyEnum]
-    selected_question_ids: list[int]
+class TestQuestionData(BaseModel):
+    question_id: int
+    answer: str
+    options: Dict[str, str]  # e.g., {"A": "Option A", "B": "Option B", ...}
+    category: QuestionCategory
+    question: str
+    difficulty: str  # "Easy", "Medium", "Hard"
+    user_id: int
 
+
+# Test Create Schema
+class TestCreate(BaseModel):
+    questions: List[TestQuestionData]
+
+
+# Test Response Schema
 class TestResponse(BaseModel):
     test_id: int
     test_code: str
@@ -156,16 +172,14 @@ class TestResponse(BaseModel):
     class Config:
         from_attributes = True
 
+
+# Test Detail Response Schema
 class TestDetailResponse(BaseModel):
     id: int
     test_code: str
-    category_id: int
-    sub_category_id: Optional[int]
-    difficulty: list[str]
-    question_ids: list[int]
-    created_by: int
+    questions_data: List[TestQuestionData]  # Returns the complete question array
+    user_id: int
     created_at: datetime
-    is_active: bool
     
     class Config:
         from_attributes = True

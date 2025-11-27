@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
-from typing import Optional
+from typing import Optional, List
 from app import models, schemas
 from app.database import get_db
 from app.auth import get_current_user
@@ -11,11 +11,11 @@ router = APIRouter(prefix="/tests", tags=["Tests"])
 
 
 def generate_test_code() -> str:
-    # Generate a unique test code using UUID
+    """Generate a unique test code using UUID"""
     return f"TEST-{uuid.uuid4().hex[:8].upper()}"
 
 
-# Get questions for test creation
+# Get questions for test creation (unchanged - still useful for fetching questions)
 @router.get("/questions", response_model=list[schemas.QuestionResponse])
 def get_test_questions(
     category_id: int = Query(..., description="Category ID (required)"),
@@ -24,8 +24,15 @@ def get_test_questions(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_user)
 ):
-
-    # Get questions for test creation based on category, subcategory (optional), and difficulty
+    """
+    Get questions for test creation based on category, subcategory (optional), and difficulty
+    
+    - **category_id**: Required - The category to fetch questions from
+    - **difficulty**: Required - Easy, Medium, or Hard
+    - **sub_category_id**: Optional - If provided, fetches from specific subcategory, otherwise from entire category
+    
+    Returns all matching questions
+    """
     
     # Validate category exists
     category = db.query(models.Category).filter(
@@ -73,117 +80,93 @@ def get_test_questions(
     return questions
 
 
-# Create Test
+# Create Test - NEW IMPLEMENTATION
 @router.post("/create", response_model=schemas.TestResponse)
 def create_test(
     test_data: schemas.TestCreate,
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_user)
 ):
-    # Create a new test with selected questions
+    """
+    Create a new test with complete question data
     
-    # **category_id**: Required - Category for the test
-    # **sub_category_id**: Optional - Subcategory for the test
-    # **difficulty**: Required - Difficulty level (Easy, Medium, Hard)
-    # **selected_question_ids**: Required - List of question IDs to include in test
+    - **questions**: Required - List of complete question objects with all details
     
-    # Returns test_id, unique test_code, and question_count
+    The complete question data is stored in the test, so even if questions are deleted later,
+    the test preserves all question information for results and analytics.
     
-    # Validate selected_question_ids is not empty
-    if not test_data.selected_question_ids:
+    Returns test_id, unique test_code, and question_count
+    """
+    
+    # Validate questions list is not empty
+    if not test_data.questions:
         raise HTTPException(
             status_code=400,
-            detail="selected_question_ids cannot be empty"
+            detail="questions list cannot be empty"
         )
     
-    # Validate category exists
-    category = db.query(models.Category).filter(
-        models.Category.id == test_data.category_id
-    ).first()
-    if not category:
-        raise HTTPException(status_code=404, detail="Category not found")
-    
-    # Validate subcategory if provided
-    if test_data.sub_category_id is not None:
-        subcategory = db.query(models.Subcategory).filter(
-            models.Subcategory.id == test_data.sub_category_id
-        ).first()
-        if not subcategory:
-            raise HTTPException(status_code=404, detail="Subcategory not found")
-        
-        # Ensure subcategory belongs to the category
-        if subcategory.category_id != test_data.category_id:
+    # Basic validation: ensure all required fields are present
+    for idx, question in enumerate(test_data.questions):
+        # Validate answer is not empty
+        if not question.answer or not question.answer.strip():
             raise HTTPException(
                 status_code=400,
-                detail="Subcategory does not belong to the specified category"
-            )
-    
-    # Validate all questions exist and match the criteria
-    questions = db.query(models.Question).filter(
-        models.Question.id.in_(test_data.selected_question_ids)
-    ).all()
-    
-    # Check if all question IDs were found
-    found_question_ids = {q.id for q in questions}
-    missing_ids = set(test_data.selected_question_ids) - found_question_ids
-    if missing_ids:
-        raise HTTPException(
-            status_code=404,
-            detail=f"Questions not found: {list(missing_ids)}"
-        )
-    
-    # Validate each question belongs to the correct category, subcategory, and difficulty
-    for question in questions:
-        # Check category
-        if question.category_id != test_data.category_id:
-            raise HTTPException(
-                status_code=400,
-                detail=f"Question {question.id} does not belong to category {test_data.category_id}"
+                detail=f"Question at index {idx} has empty answer"
             )
         
-        # Check subcategory
-        if test_data.sub_category_id is not None:
-            if question.sub_category_id != test_data.sub_category_id:
-                raise HTTPException(
-                    status_code=400,
-                    detail=f"Question {question.id} does not belong to subcategory {test_data.sub_category_id}"
-                )
-        else:
-            # If no subcategory specified, ensure question also has no subcategory
-            if question.sub_category_id is not None:
-                raise HTTPException(
-                    status_code=400,
-                    detail=f"Question {question.id} belongs to a subcategory but test has no subcategory"
-                )
-        
-        # Check difficulty
-        if question.difficulty not in [d.value for d in test_data.difficulty]:
+        # Validate options is not empty
+        if not question.options:
             raise HTTPException(
                 status_code=400,
-                detail=f"Question {question.id} has difficulty '{question.difficulty}' but test requires '{test_data.difficulty.value}'"
+                detail=f"Question at index {idx} has empty options"
+            )
+        
+        # Validate question text is not empty
+        if not question.question or not question.question.strip():
+            raise HTTPException(
+                status_code=400,
+                detail=f"Question at index {idx} has empty question text"
+            )
+        
+        # Validate answer exists in options
+        if question.answer.upper() not in [key.upper() for key in question.options.keys()]:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Question at index {idx}: answer '{question.answer}' is not in options"
             )
     
     # Generate unique test code using UUID
     test_code = generate_test_code()
     
-    # Ensure test code is unique (extremely rare collision with UUID, but safety check)
+    # Ensure test code is unique
     while db.query(models.Test).filter(models.Test.test_code == test_code).first():
         test_code = generate_test_code()
     
-    # Convert question IDs to JSON string for storage
-    question_ids_json = json.dumps(test_data.selected_question_ids)
+    # Convert questions data to JSON string for storage
+    questions_data_list = []
+    for question in test_data.questions:
+        question_dict = {
+            "question_id": question.question_id,
+            "answer": question.answer,
+            "options": question.options,
+            "category": {
+                "id": question.category.id,
+                "name": question.category.name,
+                "subcategory": question.category.subcategory
+            },
+            "question": question.question,
+            "difficulty": question.difficulty,
+            "user_id": question.user_id
+        }
+        questions_data_list.append(question_dict)
     
-    difficulty_json = json.dumps([d.value for d in test_data.difficulty])
-
+    questions_json = json.dumps(questions_data_list)
+    
     # Create test
     db_test = models.Test(
         test_code=test_code,
-        category_id=test_data.category_id,
-        sub_category_id=test_data.sub_category_id,
-        difficulty = difficulty_json,
-        question_ids=question_ids_json,
-        user_id=current_user.id,
-        is_active=False
+        questions_data=questions_json,
+        user_id=current_user.id
     )
     
     db.add(db_test)
@@ -194,7 +177,7 @@ def create_test(
     return schemas.TestResponse(
         test_id=db_test.id,
         test_code=db_test.test_code,
-        question_count=len(test_data.selected_question_ids)
+        question_count=len(test_data.questions)
     )
 
 
@@ -204,25 +187,37 @@ def get_my_tests(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_user)
 ):
-    # Get all tests created by the current user
+    """Get all tests created by the current user"""
     
     tests = db.query(models.Test).filter(
         models.Test.user_id == current_user.id
     ).all()
     
-    # Convert question_ids from JSON to list for each test
+    # Convert questions_data from JSON to list for each test
     result = []
     for test in tests:
+        questions_data = json.loads(test.questions_data)
+        
+        # Convert back to TestQuestionData objects
+        questions_list = []
+        for q in questions_data:
+            question_obj = schemas.TestQuestionData(
+                question_id=q["question_id"],
+                answer=q["answer"],
+                options=q["options"],
+                category=schemas.QuestionCategory(**q["category"]),
+                question=q["question"],
+                difficulty=q["difficulty"],
+                user_id=q["user_id"]
+            )
+            questions_list.append(question_obj)
+        
         test_dict = {
             "id": test.id,
             "test_code": test.test_code,
-            "category_id": test.category_id,
-            "sub_category_id": test.sub_category_id,
-            "difficulty": test.difficulty,
-            "question_ids": json.loads(test.question_ids),
+            "questions_data": questions_list,
             "user_id": test.user_id,
-            "created_at": test.created_at,
-            "is_active": test.is_active
+            "created_at": test.created_at
         }
         result.append(schemas.TestDetailResponse(**test_dict))
     
@@ -236,7 +231,7 @@ def get_test_by_code(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_user)
 ):
-    # Get test details by test code
+    """Get test details by test code"""
     
     db_test = db.query(models.Test).filter(
         models.Test.test_code == test_code
@@ -245,15 +240,27 @@ def get_test_by_code(
     if not db_test:
         raise HTTPException(status_code=404, detail="Test not found")
     
-    # Convert question_ids from JSON to list
+    # Convert questions_data from JSON to list
+    questions_data = json.loads(db_test.questions_data)
+    
+    # Convert back to TestQuestionData objects
+    questions_list = []
+    for q in questions_data:
+        question_obj = schemas.TestQuestionData(
+            question_id=q["question_id"],
+            answer=q["answer"],
+            options=q["options"],
+            category=schemas.QuestionCategory(**q["category"]),
+            question=q["question"],
+            difficulty=q["difficulty"],
+            user_id=q["user_id"]
+        )
+        questions_list.append(question_obj)
+    
     return schemas.TestDetailResponse(
         id=db_test.id,
         test_code=db_test.test_code,
-        category_id=db_test.category_id,
-        sub_category_id=db_test.sub_category_id,
-        difficulty=db_test.difficulty,
-        question_ids=json.loads(db_test.question_ids),
+        questions_data=questions_list,
         user_id=db_test.user_id,
-        created_at=db_test.created_at,
-        is_active=db_test.is_active
+        created_at=db_test.created_at
     )

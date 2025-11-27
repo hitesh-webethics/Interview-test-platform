@@ -82,14 +82,8 @@ class Test(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     test_code = Column(String(100), unique=True, nullable=False, index=True)
-    category_id = Column(Integer, ForeignKey("categories.id", ondelete="CASCADE"))
-    sub_category_id = Column(Integer, ForeignKey("subcategories.id", ondelete="SET NULL"), nullable=True)
-    difficulty = Column(Text, nullable=False)
-    question_ids = Column(Text, nullable=False)  # Stored as JSON array
+    questions_data = Column(Text, nullable=False)  # Stores complete question data as JSON array
     user_id = Column(Integer, ForeignKey("users.id"))
     created_at = Column(TIMESTAMP(timezone=True), server_default=func.now())
-    is_active = Column(Boolean, default=False, nullable=False)
 
-    category = relationship("Category", backref="tests")
-    sub_category = relationship("Subcategory", backref="tests")
     creator = relationship("User", backref="tests")

@@ -1,8 +1,8 @@
 """06 Tests Table
 
-Revision ID: 3c75dd46e59f
+Revision ID: c21a0a51448d
 Revises: a0f42ad306a8
-Create Date: 2025-11-26 18:25:23.587367
+Create Date: 2025-11-27 17:24:33.275147
 
 """
 from typing import Sequence, Union
@@ -12,7 +12,7 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision: str = '3c75dd46e59f'
+revision: str = 'c21a0a51448d'
 down_revision: Union[str, Sequence[str], None] = 'a0f42ad306a8'
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
@@ -24,15 +24,9 @@ def upgrade() -> None:
     op.create_table('tests',
     sa.Column('id', sa.Integer(), nullable=False),
     sa.Column('test_code', sa.String(length=100), nullable=False),
-    sa.Column('category_id', sa.Integer(), nullable=True),
-    sa.Column('sub_category_id', sa.Integer(), nullable=True),
-    sa.Column('difficulty', sa.Text(), nullable=False),
-    sa.Column('question_ids', sa.Text(), nullable=False),
+    sa.Column('questions_data', sa.Text(), nullable=False),
     sa.Column('user_id', sa.Integer(), nullable=True),
     sa.Column('created_at', sa.TIMESTAMP(timezone=True), server_default=sa.text('now()'), nullable=True),
-    sa.Column('is_active', sa.Boolean(), nullable=False),
-    sa.ForeignKeyConstraint(['category_id'], ['categories.id'], ondelete='CASCADE'),
-    sa.ForeignKeyConstraint(['sub_category_id'], ['subcategories.id'], ondelete='SET NULL'),
     sa.ForeignKeyConstraint(['user_id'], ['users.id'], ),
     sa.PrimaryKeyConstraint('id')
     )
