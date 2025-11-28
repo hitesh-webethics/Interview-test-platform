@@ -1,4 +1,5 @@
-from fastapi import APIRouter, Depends, HTTPException, status, Query
+from fastapi import APIRouter, Depends, status, Query
+from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 from typing import Optional
 from app import models, schemas
@@ -16,46 +17,61 @@ def create_question(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_user)
 ):
-    
+
     # Validate category exists
     category = db.query(models.Category).filter(
         models.Category.id == question.category_id
     ).first()
     if not category:
-        raise HTTPException(status_code=404, detail="Category not found")
-    
+        return JSONResponse(status_code=404, content = {
+            "status" : 404,
+            "error" : "Category not found"
+        })
+
     # Validate subcategory if provided
     if question.sub_category_id is not None:
         subcategory = db.query(models.Subcategory).filter(
             models.Subcategory.id == question.sub_category_id
         ).first()
         if not subcategory:
-            raise HTTPException(status_code=404, detail="Subcategory not found")
-        
+            return JSONResponse(status_code=404, content = {
+                "status" : 404,
+                "error" : "Subcategory not found"
+            })
+
         # Ensure subcategory belongs to the specified category
         if subcategory.category_id != question.category_id:
-            raise HTTPException(
+            return JSONResponse(
                 status_code=400,
-                detail="Subcategory does not belong to the specified category"
+                content = {
+                    "status" : 400,
+                    "error" : "Subcategory does not belong to the specified category"
+                }
             )
-    
+
     # Validate correct_option is one of the option keys
     if question.correct_option not in question.options:
-        raise HTTPException(
+        return JSONResponse(
             status_code=400,
-            detail=f"correct_option '{question.correct_option}' must be one of the option keys"
+            content = {
+                "status" : 400,
+                "error" : f"correct option '{question.correct_option}' must be one of the option keys"
+            }
         )
-    
+
     # Validate correct_option is a single character
     if len(question.correct_option) != 1:
-        raise HTTPException(
+        return JSONResponse(
             status_code=400,
-            detail="correct_option must be a single character (e.g., 'a', 'b', 'c', 'd')"
+            content = {
+                "status" : 400,
+                "error" : "correct option must be a single character (e.g., 'a', 'b', 'c', 'd')"
+            }
         )
-    
+
     # Convert options dict to JSON string for storage
     options_json = json.dumps(question.options)
-    
+
     # Create question
     db_question = models.Question(
         category_id=question.category_id,
@@ -66,14 +82,14 @@ def create_question(
         difficulty=question.difficulty.value,
         user_id=current_user.id
     )
-    
+
     db.add(db_question)
     db.commit()
     db.refresh(db_question)
-    
+
     # Convert options back to dict for response
     db_question.options = json.loads(db_question.options)
-    
+
     return db_question
 
 
@@ -86,10 +102,10 @@ def get_questions(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_user)
 ):
-    
+
     # Start with base query
     query = db.query(models.Question)
-    
+
     # Apply category filter if provided
     if category_id is not None:
         # Validate category exists
@@ -97,10 +113,13 @@ def get_questions(
             models.Category.id == category_id
         ).first()
         if not category:
-            raise HTTPException(status_code=404, detail="Category not found")
+            return JSONResponse(status_code=404, content = {
+                "status" : 404,
+                "error" : "Category not found"
+            })
         
         query = query.filter(models.Question.category_id == category_id)
-    
+
     # Apply subcategory filter if provided
     if sub_category_id is not None:
         # Validate subcategory exists
@@ -108,28 +127,33 @@ def get_questions(
             models.Subcategory.id == sub_category_id
         ).first()
         if not subcategory:
-            raise HTTPException(status_code=404, detail="Subcategory not found")
-        
+            return JSONResponse(status_code=404, content = {
+                "status" : 404,
+                "error" : "Subcategory not found"
+            })
+
         # If category_id is also provided, ensure subcategory belongs to it
         if category_id is not None and subcategory.category_id != category_id:
-            raise HTTPException(
+            return JSONResponse(
                 status_code=400,
-                detail="Subcategory does not belong to the specified category"
-            )
+                content = {
+                    "status" : 400,
+                    "error" : "Subcategory does not belong to the specified category"
+                })
         
         query = query.filter(models.Question.sub_category_id == sub_category_id)
-    
+
     # Apply difficulty filter if provided
     if difficulty is not None:
         query = query.filter(models.Question.difficulty == difficulty.value)
-    
+
     # Execute query
     questions = query.all()
-    
+
     # Convert options from JSON string to dict for each question
     for question in questions:
         question.options = json.loads(question.options)
-    
+
     return questions
 
 
@@ -141,17 +165,20 @@ def get_question(
     current_user: models.User = Depends(get_current_user)
 ):
     # Get a specific question by ID
-    
+
     db_question = db.query(models.Question).filter(
         models.Question.id == question_id
     ).first()
-    
+
     if not db_question:
-        raise HTTPException(status_code=404, detail="Question not found")
-    
+        return JSONResponse(status_code=404, content = {
+            "status" : 404,
+            "error" : "Question not found"
+        })
+
     # Convert options from JSON string to dict
     db_question.options = json.loads(db_question.options)
-    
+
     return db_question
 
 
@@ -163,89 +190,110 @@ def update_question(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_user)
 ):
-    
+
     db_question = db.query(models.Question).filter(
         models.Question.id == question_id
     ).first()
-    
+
     if not db_question:
-        raise HTTPException(status_code=404, detail="Question not found")
-    
+        return JSONResponse(status_code=404, content = {
+            "status" : 404,
+            "error" : "Question not found"
+        })
+
     # Check authorization: Admin or creator
     if current_user.role.role_name != "Admin" and db_question.user_id != current_user.id:
-        raise HTTPException(
+        return JSONResponse(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="You can only update your own questions"
+            content = {
+                "status" : 403,
+                "error" : "You can only update your own questions"
+            }
         )
-    
+
     # Update category_id if provided
     if question.category_id is not None:
         category = db.query(models.Category).filter(
             models.Category.id == question.category_id
         ).first()
         if not category:
-            raise HTTPException(status_code=404, detail="Category not found")
+            return JSONResponse(status_code=404, content = {
+                "status" : 404,
+                "error" : "Category not found"
+            })
         db_question.category_id = question.category_id
-    
+
     # Update sub_category_id if provided
     if question.sub_category_id is not None:
         subcategory = db.query(models.Subcategory).filter(
             models.Subcategory.id == question.sub_category_id
         ).first()
         if not subcategory:
-            raise HTTPException(status_code=404, detail="Subcategory not found")
-        
+            return JSONResponse(status_code=404, content = {
+                "status" : 404,
+                "error" : "Subcategory not found"
+            })
+
         # Ensure subcategory belongs to the category
         if subcategory.category_id != db_question.category_id:
-            raise HTTPException(
+            return JSONResponse(
                 status_code=400,
-                detail="Subcategory does not belong to the question's category"
+                content = {
+                    "status" : 400,
+                    "error" : "Subcategory does not belong to the question's category"
+                }
             )
         db_question.sub_category_id = question.sub_category_id
-    
+
     # Update question_text if provided
     if question.question_text is not None:
         db_question.question_text = question.question_text
-    
+
     # Update options if provided
     if question.options is not None:
         # Validate correct_option still exists in new options if correct_option not being updated
         if question.correct_option is None and db_question.correct_option not in question.options:
-            raise HTTPException(
+            return JSONResponse(
                 status_code=400,
-                detail=f"Current correct_option '{db_question.correct_option}' must exist in new options"
-            )
+                content = {
+                    "status" : 400,
+                    "error" : f"Current correct option '{db_question.correct_option}' must exist in new options"
+                })
         db_question.options = json.dumps(question.options)
-    
+
     # Update correct_option if provided
     if question.correct_option is not None:
         # Validate it exists in options
         current_options = json.loads(db_question.options)
         if question.correct_option not in current_options:
-            raise HTTPException(
+            return JSONResponse(
                 status_code=400,
-                detail="correct_option must be one of the option keys"
-            )
-        
+                content = {
+                    "status" : 400,
+                    "error" : "correct option must be one of the option keys"
+                })
+
         # Validate single character
         if len(question.correct_option) != 1:
-            raise HTTPException(
+            return JSONResponse(
                 status_code=400,
-                detail="correct_option must be a single character"
-            )
-        
+                content = {
+                    "status" : 400,
+                    "error" : "correct option must be a single character"
+                })
+
         db_question.correct_option = question.correct_option
-    
+
     # Update difficulty if provided
     if question.difficulty is not None:
         db_question.difficulty = question.difficulty.value
-    
+
     db.commit()
     db.refresh(db_question)
-    
+
     # Convert options back to dict for response
     db_question.options = json.loads(db_question.options)
-    
+
     return db_question
 
 
@@ -256,15 +304,18 @@ def delete_question(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(require_admin)
 ):
-    
+
     db_question = db.query(models.Question).filter(
         models.Question.id == question_id
     ).first()
-    
+
     if not db_question:
-        raise HTTPException(status_code=404, detail="Question not found")
-    
+        return JSONResponse(status_code=404, content = {
+            "status" : 404,
+            "error" : "Question not found"
+        })
+
     db.delete(db_question)
     db.commit()
-    
+
     return {"message": "Question deleted successfully"}

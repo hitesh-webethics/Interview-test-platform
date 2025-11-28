@@ -1,8 +1,9 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, status
+from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 from app import models, schemas
 from app.database import get_db
-from app.auth import hash_password, get_current_user, require_admin
+from app.auth import hash_password, get_current_user
 
 router = APIRouter(prefix="/users", tags=["Users"])
 
@@ -15,11 +16,14 @@ def create_user(
     # Check if email already exists
     existing_user = db.query(models.User).filter(models.User.email == user.email).first()
     if existing_user:
-        raise HTTPException(status_code=400, detail="Email already registered")
-    
+        return JSONResponse(status_code=400, content = {
+            "status" : 400,
+            "error" : "Email already registered"
+        })
+
     # Hash password
     hashed_password = hash_password(user.password)
-    
+
     # Create user with hashed password
     db_user = models.User(
         name=user.name,
@@ -49,7 +53,10 @@ def get_user(
 ):
     db_user = db.query(models.User).filter(models.User.id == user_id).first()
     if not db_user:
-        raise HTTPException(status_code=404, detail="User not found")
+        return JSONResponse(status_code=404, content = {
+            "status" : 404,
+            "error" : "User not found"
+        })
     return db_user
 
 # Update User - Admin can update anyone, others can update themselves
@@ -62,28 +69,34 @@ def update_user(
 ):
     # Check if user is Admin or updating themselves
     if current_user.role.role_name != "Admin" and current_user.id != user_id:
-        raise HTTPException(
+        return JSONResponse(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="You can only update your own profile"
+            content = {
+                "status" : 403,
+                "error" : "You can only update your own profile"
+            }
         )
-    
+
     db_user = db.query(models.User).filter(models.User.id == user_id).first()
     if not db_user:
-        raise HTTPException(status_code=404, detail="User not found")
-    
+        return JSONResponse(status_code=404, content = {
+            "status" : 404,
+            "error" : "User not found"
+        })
+
     # Update only provided fields
     if user.name is not None:
         db_user.name = user.name
-    
+
     if user.email is not None:
         db_user.email = user.email
-    
+
     if user.password is not None:
         db_user.password = hash_password(user.password)
-    
+
     if user.role_id is not None:
         db_user.role_id = user.role_id
-    
+
     db.commit()
     db.refresh(db_user)
     return db_user
@@ -97,24 +110,33 @@ def delete_user(
 ):
     db_user = db.query(models.User).filter(models.User.id == user_id).first()
     if not db_user:
-        raise HTTPException(status_code=404, detail="User not found")
+        return JSONResponse(status_code=404, content = {
+            "status" : 404,
+            "error" : "User not found"
+        })
     
     # Check if target user is Admin
     if db_user.role.role_name == "Admin":
         # Only the admin themselves can delete their own account
         if current_user.id != user_id:
-            raise HTTPException(
+            return JSONResponse(
                 status_code=status.HTTP_403_FORBIDDEN,
-                detail="Admins can only delete their own account"
+                content = {
+                    "status" : 403,
+                    "error" : "Admins can only delete their own account"
+                }
             )
     else:
         # For non-admin users, only Admin can delete or users can delete themselves
         if current_user.role.role_name != "Admin" and current_user.id != user_id:
-            raise HTTPException(
+            return JSONResponse(
                 status_code=status.HTTP_403_FORBIDDEN,
-                detail="You don't have permission to delete this user"
+                content = {
+                    "status" : 403,
+                    "error" : "You don't have permission to delete this user"
+                }
             )
-    
+
     db.delete(db_user)
     db.commit()
     

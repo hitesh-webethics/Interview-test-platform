@@ -11,7 +11,7 @@ router = APIRouter(prefix="/tests", tags=["Tests"])
 
 
 def generate_test_code() -> str:
-    """Generate a unique test code using UUID"""
+    # Generate a unique test code using UUID
     return f"TEST-{uuid.uuid4().hex[:8].upper()}"
 
 
@@ -24,15 +24,14 @@ def get_test_questions(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_user)
 ):
-    """
-    Get questions for test creation based on category, subcategory (optional), and difficulty
+
+    # Get questions for test creation based on category, subcategory (optional), and difficulty
     
-    - **category_id**: Required - The category to fetch questions from
-    - **difficulty**: Required - Easy, Medium, or Hard
-    - **sub_category_id**: Optional - If provided, fetches from specific subcategory, otherwise from entire category
+    # **category_id**: Required - The category to fetch questions from
+    # **difficulty**: Required - Easy, Medium, or Hard
+    # **sub_category_id**: Optional - If provided, fetches from specific subcategory, otherwise from entire category
     
-    Returns all matching questions
-    """
+    # Returns all matching questions
     
     # Validate category exists
     category = db.query(models.Category).filter(
@@ -87,16 +86,15 @@ def create_test(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_user)
 ):
-    """
-    Create a new test with complete question data
+
+    # Create a new test with complete question data
     
-    - **questions**: Required - List of complete question objects with all details
+    # **questions**: Required - List of complete question objects with all details
     
-    The complete question data is stored in the test, so even if questions are deleted later,
-    the test preserves all question information for results and analytics.
+    # The complete question data is stored in the test, so even if questions are deleted later,
+    # the test preserves all question information for results and analytics.
     
-    Returns test_id, unique test_code, and question_count
-    """
+    # Returns test_id, unique test_code, and question_count
     
     # Validate questions list is not empty
     if not test_data.questions:
@@ -187,7 +185,7 @@ def get_my_tests(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_user)
 ):
-    """Get all tests created by the current user"""
+    # Get all tests created by the current user
     
     tests = db.query(models.Test).filter(
         models.Test.user_id == current_user.id
@@ -231,7 +229,7 @@ def get_test_by_code(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_user)
 ):
-    """Get test details by test code"""
+    # Get test details by test code
     
     db_test = db.query(models.Test).filter(
         models.Test.test_code == test_code

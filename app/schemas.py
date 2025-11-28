@@ -72,7 +72,8 @@ class CategoryResponse(CategoryBase):
     id: int
     user_id: int
     created_at: datetime
-    
+    question_count: Optional[int] = 0
+
     class Config:
         from_attributes = True
 
@@ -91,6 +92,7 @@ class SubcategoryUpdate(BaseModel):
 class SubcategoryResponse(SubcategoryBase):
     id: int
     created_at: datetime
+    question_count: Optional[int] = 0
 
     class Config:
         from_attributes = True

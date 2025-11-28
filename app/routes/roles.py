@@ -1,4 +1,5 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends
+from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 from app import models, schemas
 from app.database import get_db
@@ -9,7 +10,7 @@ router = APIRouter(prefix="/roles", tags=["Roles"])
 # Create Role - Only Admin can create
 @router.post("/", response_model=schemas.RoleResponse)
 def create_role(
-    role: schemas.RoleCreate, 
+    role: schemas.RoleCreate,
     db: Session = Depends(get_db),
     current_user: models.User = Depends(require_admin)
 ):
@@ -17,13 +18,16 @@ def create_role(
     existing_role = db.query(models.Role).filter(
         models.Role.role_name == role.role_name
     ).first()
-    
+
     if existing_role:
-        raise HTTPException(
+        return JSONResponse(
             status_code=400,
-            detail="Role with this name already exists"
+            content = {
+                "status" : 400,
+                "error" : "Role with this name already exists"
+            }
         )
-    
+
     # Create new role (Admin only)
     db_role = models.Role(role_name=role.role_name)
     db.add(db_role)
@@ -48,7 +52,10 @@ def get_role(
 ):
     db_role = db.query(models.Role).filter(models.Role.id == role_id).first()
     if not db_role:
-        raise HTTPException(status_code=404, detail="Role not found")
+        return JSONResponse(status_code=404, content = {
+            "status" : 404,
+            "error" : "Role not found"
+        })
     return db_role
 
 # Delete Role
@@ -61,13 +68,19 @@ def delete_role(
     # Delete role (Admin only)
     db_role = db.query(models.Role).filter(models.Role.id == role_id).first()
     if not db_role:
-        raise HTTPException(status_code=404, detail="Role not found")
-    
+        return JSONResponse(status_code=404, content = {
+            "status" : 404,
+            "error" : "Role not found"
+        })
+
     db.delete(db_role)
     db.commit()
-    
+
     check_role = db.query(models.Role).filter(models.Role.id == role_id).first()
     if check_role:
-        raise HTTPException(status_code=500, detail="Role not deleted due to dependency or DB issue")
-    
+        return JSONResponse(status_code=500, content = {
+            "status" : 500,
+            "error" : "Role not deleted due to dependency or DB issue"
+        })
+
     return {"message": "Role deleted successfully"}
