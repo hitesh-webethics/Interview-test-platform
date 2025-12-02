@@ -12,7 +12,7 @@ router = APIRouter(prefix="/subcategories", tags=["Subcategories"])
 def create_subcategory(
     subcategory: schemas.SubcategoryCreate,
     db: Session = Depends(get_db),
-    current_user: models.User = Depends(get_current_user)
+    current_user: models.User = Depends(require_admin)
 ):
     # Check if category exists
     category = db.query(models.Category).filter(
@@ -122,7 +122,7 @@ def update_subcategory(
     subcategory_id: int,
     subcategory: schemas.SubcategoryUpdate,
     db: Session = Depends(get_db),
-    current_user: models.User = Depends(get_current_user)
+    current_user: models.User = Depends(require_admin)
 ):
     db_subcategory = db.query(models.Subcategory).filter(
         models.Subcategory.id == subcategory_id
@@ -165,7 +165,7 @@ def update_subcategory(
             return JSONResponse(status_code=404, content = {
                 "status" : 404,
                 "error" : "Category not found"
-            }) 
+            })
 
         db_subcategory.category_id = subcategory.category_id
 

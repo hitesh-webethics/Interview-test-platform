@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field, EmailStr
 from datetime import datetime
 from typing import Optional, Dict, List
 import json
@@ -6,8 +6,8 @@ from enum import Enum
 
 # Login Schema
 class UserLogin(BaseModel):
-    email: str
-    password: str
+    email: str = Field(..., min_length=1, description="User email address")
+    password: str = Field(..., min_length=1, description="User password")
 
 # Token Response
 class Token(BaseModel):
@@ -24,7 +24,7 @@ class RoleBase(BaseModel):
     role_name: str
 
 class RoleCreate(RoleBase):
-    pass
+    role_name: str = Field(..., min_length=1, description="Role name cannot be empty")
 
 class RoleResponse(RoleBase):
     id: int
@@ -38,8 +38,8 @@ class UserBase(BaseModel):
     email: str
 
 class UserCreate(UserBase):
-    password: str
-    role_id: int
+    password: str = Field(..., min_length=6, description="Password must be at least 6 characters")
+    role_id: int = Field(..., description="Role ID (required)")
 
 class UserUpdate(BaseModel):
     name: str | None = None
@@ -183,5 +183,54 @@ class TestDetailResponse(BaseModel):
     user_id: int
     created_at: datetime
     
+    class Config:
+        from_attributes = True
+
+
+# Candidate Schemas
+class AnswerItem(BaseModel):
+    questionId: str
+    selected: str
+
+
+class CandidateBase(BaseModel):
+    name: str
+    email: str
+    test_id: int
+    answers: List[AnswerItem]  # List of answer objects
+    time_taken: str  # Time in string format like "00.12"
+
+
+class CandidateCreate(CandidateBase):
+    pass
+
+
+class CandidateUpdate(BaseModel):
+    name: Optional[str] = None
+    email: Optional[str] = None
+    answers: Optional[List[AnswerItem]] = None
+    time_taken: Optional[str] = None
+
+
+class CandidateResponse(BaseModel):
+    testId: int
+    name: str
+    email: str
+    answers: List[AnswerItem]
+    timeTaken: str
+
+    class Config:
+        from_attributes = True
+
+
+class CandidateDetailResponse(BaseModel):
+    id: int
+    testId: int
+    name: str
+    email: str
+    answers: List[AnswerItem]
+    timeTaken: str
+    created_at: datetime
+
     class Config:
         from_attributes = True

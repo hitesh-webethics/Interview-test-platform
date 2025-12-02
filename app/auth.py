@@ -1,9 +1,9 @@
+# app/auth.py
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 from jose import JWTError, jwt
 from passlib.context import CryptContext
-from fastapi import Depends, status
-from fastapi.responses import JSONResponse
+from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.orm import Session
 from app import models
@@ -16,7 +16,7 @@ load_dotenv()
 
 # Configuration from .env
 SECRET_KEY = os.getenv("SECRET_KEY")
-ALGORITHM = os.getenv("ALGORITHM", "HS256")  # Default to HS256 if not set
+ALGORITHM = os.getenv("ALGORITHM", "HS256")
 ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "30"))
 
 # Password hashing context
@@ -40,52 +40,81 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
     # Generate JWT token with expiration
     to_encode = data.copy()
     if expires_delta:
-        expire = datetime.now(timezone.utc) + expires_delta  # ← Fixed
+        expire = datetime.now(timezone.utc) + expires_delta
     else:
-        expire = datetime.now(timezone.utc) + timedelta(minutes=15)  # ← Fixed
+        expire = datetime.now(timezone.utc) + timedelta(minutes=15)
 
     to_encode.update({"exp": expire})
     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
     return encoded_jwt
 
-# Get current user from token
+# Get current user from token (Base authentication check)
 def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)):
-    # Extract user from JWT token
-    def credentials_exception():
-        return JSONResponse(
+    # Validates JWT token and returns the authenticated user.
+    credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
-        content = {
-            "status" : 401,
-            "error" : "Could not validate credentials"
+        details={
+            "status": 401,
+            "error": "Could not validate credentials"
         },
         headers={"WWW-Authenticate": "Bearer"},
     )
 
     try:
-        # Decode token
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        # Decode the token and check for expiration
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM], options={"verify_exp": True})
         user_id: int = payload.get("user_id")
-        if user_id is None:
-            return credentials_exception()
-    except JWTError:
-        return credentials_exception()
 
-    # Get user from database
+        if user_id is None:
+            raise credentials_exception
+    except JWTError:
+        raise credentials_exception
+
+    # Retrieve the user from the database
     user = db.query(models.User).filter(models.User.id == user_id).first()
     if user is None:
-        return credentials_exception()
+        raise credentials_exception
 
     return user
 
-# Check if user is Admin
+
+# AUTHORIZATION CHECKS (Role-based permissions)
 def require_admin(current_user: models.User = Depends(get_current_user)):
-    # Dependency to ensure user is dmin
+    # Dependency to ensure user is Admin.
+    # Use this for routes that ONLY admins can access.
     if current_user.role.role_name != "Admin":
-        return JSONResponse(
+        raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            content = {
-                "status" : 403,
-                "error" : "Only Admin can perform this action"
-            }
-        )
+            details={
+                "status": 403,
+                "error": "Only Admin can perform this action"
+            })
+    return current_user
+
+
+def require_creator_or_admin(current_user: models.User = Depends(get_current_user)):
+    # Dependency to ensure user is either Creator or Admin.
+    # Use this for routes that both Creators and Admins can access (like creating tests).
+    if current_user.role.role_name not in ["Admin", "Creator"]:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            details={
+                "status": 403,
+                "error": "Only Admin or Creator can perform this action"
+            })
+    return current_user
+
+
+def require_self_or_admin(user_id: int, current_user: models.User = Depends(get_current_user)):
+    # Dependency to ensure user is either accessing their own resource or is an Admin.
+    # This is useful for update/delete operations where users can modify their own data.
+    # This requires user_id to be passed as a path parameter.
+
+    if current_user.role.role_name != "Admin" and current_user.id != user_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            details={
+                "status": 403,
+                "error": "You can only access your own resources"
+            })
     return current_user

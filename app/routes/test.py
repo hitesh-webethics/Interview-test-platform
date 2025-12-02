@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 from typing import Optional, List
 from app import models, schemas
 from app.database import get_db
-from app.auth import get_current_user
+from app.auth import get_current_user, require_creator_or_admin
 import json
 import uuid
 
@@ -84,7 +84,7 @@ def get_test_questions(
 def create_test(
     test_data: schemas.TestCreate,
     db: Session = Depends(get_db),
-    current_user: models.User = Depends(get_current_user)
+    current_user: models.User = Depends(require_creator_or_admin)
 ):
 
     # Create a new test with complete question data

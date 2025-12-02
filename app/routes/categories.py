@@ -13,7 +13,7 @@ router = APIRouter(prefix="/categories", tags=["Categories"])
 def create_category(
     category: schemas.CategoryCreate,
     db: Session = Depends(get_db),
-    current_user: models.User = Depends(get_current_user)
+    current_user: models.User = Depends(require_admin)
 ):
     # Trim whitespace
     category_name = category.name.strip()
@@ -29,8 +29,7 @@ def create_category(
             content = {
                 "status" : 400,
                 "error" : "Category with this name already exists"
-            }
-        )
+            })
 
     # Create category
     db_category = models.Category(
@@ -93,8 +92,9 @@ def update_category(
     category_id: int,
     category: schemas.CategoryUpdate,
     db: Session = Depends(get_db),
-    current_user: models.User = Depends(get_current_user)
+    current_user: models.User = Depends(require_admin)  # ✅ Only Admin can update
 ):
+    # Remove the authorization check - already handled by require_admin
     db_category = db.query(models.Category).filter(
         models.Category.id == category_id
     ).first()
@@ -104,16 +104,6 @@ def update_category(
             "status" : 404,
             "error" : "Category not found"
         })
-
-    # Check if user is Admin or category creator
-    if current_user.role.role_name != "Admin" and db_category.user_id != current_user.id:
-        return JSONResponse(
-            status_code=status.HTTP_403_FORBIDDEN,
-            content = {
-                "status" : 403,
-                "error" : "Only Admins can update categories"
-            }
-        )
 
     # Update only provided fields
     if category.name is not None:
@@ -129,8 +119,7 @@ def update_category(
                 content = {
                     "status" : 400,
                     "error" : "Category with this name already exists"
-                }
-            )
+                })
 
         db_category.name = category.name
 

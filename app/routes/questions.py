@@ -9,13 +9,12 @@ import json
 
 router = APIRouter(prefix="/questions", tags=["Questions"])
 
-
 # Create Question - Any authenticated user can create
 @router.post("/", response_model=schemas.QuestionResponse)
 def create_question(
     question: schemas.QuestionCreate,
     db: Session = Depends(get_db),
-    current_user: models.User = Depends(get_current_user)
+    current_user: models.User = Depends(require_admin)
 ):
 
     # Validate category exists
@@ -188,9 +187,9 @@ def update_question(
     question_id: int,
     question: schemas.QuestionUpdate,
     db: Session = Depends(get_db),
-    current_user: models.User = Depends(get_current_user)
+    current_user: models.User = Depends(require_admin)  # ✅ Only Admin can update questions
 ):
-
+    # Remove the authorization check - already handled by require_admin
     db_question = db.query(models.Question).filter(
         models.Question.id == question_id
     ).first()
@@ -200,16 +199,6 @@ def update_question(
             "status" : 404,
             "error" : "Question not found"
         })
-
-    # Check authorization: Admin or creator
-    if current_user.role.role_name != "Admin" and db_question.user_id != current_user.id:
-        return JSONResponse(
-            status_code=status.HTTP_403_FORBIDDEN,
-            content = {
-                "status" : 403,
-                "error" : "You can only update your own questions"
-            }
-        )
 
     # Update category_id if provided
     if question.category_id is not None:
