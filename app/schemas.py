@@ -187,50 +187,80 @@ class TestDetailResponse(BaseModel):
         from_attributes = True
 
 
-# Candidate Schemas
+# CANDIDATE & RESPONSE SCHEMAS (SIMPLIFIED)
+
+# Individual Answer Item
 class AnswerItem(BaseModel):
     questionId: str
     selected: str
 
 
-class CandidateBase(BaseModel):
+# Candidate Submission
+class CandidateCreate(BaseModel):
+    testId: str
+    name: str
+    email: EmailStr
+    timeTaken: int
+    answers: List[AnswerItem]
+
+
+# Basic Candidate Response
+class CandidateResponse(BaseModel):
+    id: int
     name: str
     email: str
     test_id: int
-    answers: List[AnswerItem]  # List of answer objects
-    time_taken: str  # Time in string format like "00.12"
-
-
-class CandidateCreate(CandidateBase):
-    pass
-
-
-class CandidateUpdate(BaseModel):
-    name: Optional[str] = None
-    email: Optional[str] = None
-    answers: Optional[List[AnswerItem]] = None
-    time_taken: Optional[str] = None
-
-
-class CandidateResponse(BaseModel):
-    testId: int
-    name: str
-    email: str
-    answers: List[AnswerItem]
-    timeTaken: str
-
+    time_taken: int
+    created_at: datetime
+    
     class Config:
         from_attributes = True
 
 
+# Question Breakdown for Results
+class QuestionBreakdown(BaseModel):
+    question_id: str
+    question_text: str
+    selected_option: str
+    correct_option: str
+    is_correct: bool
+    options: Dict[str, str]
+    difficulty: str
+    category_name: str
+    subcategory_name: Optional[str] = None
+
+
+# Candidate Detail with Score
 class CandidateDetailResponse(BaseModel):
     id: int
-    testId: int
     name: str
     email: str
-    answers: List[AnswerItem]
-    timeTaken: str
+    test_id: int
+    test_code: str
+    time_taken: int
+    time_taken_formatted: str
+    total_questions: int
+    correct_answers: int
+    score: float
     created_at: datetime
-
+    
     class Config:
         from_attributes = True
+
+
+# Full Result Response
+class CandidateResultResponse(BaseModel):
+    candidate: CandidateDetailResponse
+    responses: List[QuestionBreakdown]
+
+
+# Dashboard List Item
+class CandidateListItem(BaseModel):
+    id: int
+    name: str
+    email: str
+    test_code: str
+    score: str
+    score_percentage: int
+    time_taken_formatted: str
+    created_at: datetime

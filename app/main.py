@@ -5,7 +5,7 @@ from pydantic import BaseModel
 from app.models import Base
 from app import models
 from app.database import engine
-from app.routes import auth, roles, users, categories, subcategories, questions, test 
+from app.routes import auth, roles, users, categories, subcategories, questions, test, candidates
 
 models.Base.metadata.create_all(bind=engine)
 
@@ -19,9 +19,9 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
     # Check if it's a JSON decode error (malformed JSON like {"password":})
     if errors and errors[0].get("type") == "json_invalid":
         return JSONResponse(
-            status_code=status.HTTP_400_BAD_REQUEST,
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             content={
-                "status": 400,
+                "status": 422,
                 "error": "Invalid JSON format. Please check your request body."
             }
         )
@@ -30,9 +30,9 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
     if errors and errors[0].get("type") == "missing":
         missing_field = errors[0].get("loc")[-1]  # Get field name
         return JSONResponse(
-            status_code=status.HTTP_400_BAD_REQUEST,
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             content={
-                "status": 400,
+                "status": 422,
                 "error": f"{missing_field} is a required field"
             }
         )
@@ -41,9 +41,9 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
     if errors and errors[0].get("type") in ["string_too_short", "value_error"]:
         field_name = errors[0].get("loc")[-1]
         return JSONResponse(
-            status_code=status.HTTP_400_BAD_REQUEST,
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             content={
-                "status": 400,
+                "status": 422,
                 "error": f"{field_name} cannot be empty"
             }
         )
@@ -66,6 +66,7 @@ app.include_router(categories.router)
 app.include_router(subcategories.router)
 app.include_router(questions.router)
 app.include_router(test.router)
+app.include_router(candidates.router)
 
 @app.get("/")
 def read_root():

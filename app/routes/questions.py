@@ -16,15 +16,55 @@ def create_question(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(require_admin)
 ):
+    # Validate question_text is not empty
+    if not question.question_text or not question.question_text.strip():
+        return JSONResponse(
+            status_code=400,
+            content={
+                "status": 400,
+                "error": "question_text is a required field and cannot be empty"
+            }
+        )
+    
+    # Validate options is not empty
+    if not question.options or len(question.options) == 0:
+        return JSONResponse(
+            status_code=400,
+            content={
+                "status": 400,
+                "error": "options is a required field and cannot be empty"
+            }
+        )
+    
+    # Validate each option value is not empty
+    for key, value in question.options.items():
+        if not value or not value.strip():
+            return JSONResponse(
+                status_code=400,
+                content={
+                    "status": 400,
+                    "error": f"Option '{key}' cannot be empty"
+                }
+            )
+    
+    # Validate correct_option is not empty
+    if not question.correct_option or not question.correct_option.strip():
+        return JSONResponse(
+            status_code=400,
+            content={
+                "status": 400,
+                "error": "correct_option is a required field and cannot be empty"
+            }
+        )
 
     # Validate category exists
     category = db.query(models.Category).filter(
         models.Category.id == question.category_id
     ).first()
     if not category:
-        return JSONResponse(status_code=404, content = {
-            "status" : 404,
-            "error" : "Category not found"
+        return JSONResponse(status_code=404, content={
+            "status": 404,
+            "error": "Category not found"
         })
 
     # Validate subcategory if provided
@@ -33,18 +73,18 @@ def create_question(
             models.Subcategory.id == question.sub_category_id
         ).first()
         if not subcategory:
-            return JSONResponse(status_code=404, content = {
-                "status" : 404,
-                "error" : "Subcategory not found"
+            return JSONResponse(status_code=404, content={
+                "status": 404,
+                "error": "Subcategory not found"
             })
 
         # Ensure subcategory belongs to the specified category
         if subcategory.category_id != question.category_id:
             return JSONResponse(
                 status_code=400,
-                content = {
-                    "status" : 400,
-                    "error" : "Subcategory does not belong to the specified category"
+                content={
+                    "status": 400,
+                    "error": "Subcategory does not belong to the specified category"
                 }
             )
 
@@ -52,9 +92,9 @@ def create_question(
     if question.correct_option not in question.options:
         return JSONResponse(
             status_code=400,
-            content = {
-                "status" : 400,
-                "error" : f"correct option '{question.correct_option}' must be one of the option keys"
+            content={
+                "status": 400,
+                "error": f"correct_option '{question.correct_option}' must be one of the option keys"
             }
         )
 
@@ -62,9 +102,9 @@ def create_question(
     if len(question.correct_option) != 1:
         return JSONResponse(
             status_code=400,
-            content = {
-                "status" : 400,
-                "error" : "correct option must be a single character (e.g., 'a', 'b', 'c', 'd')"
+            content={
+                "status": 400,
+                "error": "correct_option must be a single character (e.g., 'a', 'b', 'c', 'd')"
             }
         )
 
@@ -189,16 +229,94 @@ def update_question(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(require_admin)  # ✅ Only Admin can update questions
 ):
-    # Remove the authorization check - already handled by require_admin
     db_question = db.query(models.Question).filter(
         models.Question.id == question_id
     ).first()
 
     if not db_question:
-        return JSONResponse(status_code=404, content = {
-            "status" : 404,
-            "error" : "Question not found"
+        return JSONResponse(status_code=404, content={
+            "status": 404,
+            "error": "Question not found"
         })
+
+    # Validate question_text if provided
+    if question.question_text is not None:
+        if not question.question_text.strip():
+            return JSONResponse(
+                status_code=400,
+                content={
+                    "status": 400,
+                    "error": "'question_text' cannot be empty"
+                }
+            )
+        db_question.question_text = question.question_text
+
+    # Validate options if provided
+    if question.options is not None:
+        if len(question.options) == 0:
+            return JSONResponse(
+                status_code=400,
+                content={
+                    "status": 400,
+                    "error": "'options' cannot be empty"
+                }
+            )
+        
+        # Validate each option value is not empty
+        for key, value in question.options.items():
+            if not value or not value.strip():
+                return JSONResponse(
+                    status_code=400,
+                    content={
+                        "status": 400,
+                        "error": f"Option '{key}' cannot be empty"
+                    }
+                )
+        
+        # Validate correct_option still exists in new options if correct_option not being updated
+        if question.correct_option is None and db_question.correct_option not in question.options:
+            return JSONResponse(
+                status_code=400,
+                content={
+                    "status": 400,
+                    "error": f"Current correct_option '{db_question.correct_option}' must exist in new options"
+                }
+            )
+        db_question.options = json.dumps(question.options)
+
+    # Validate correct_option if provided
+    if question.correct_option is not None:
+        if not question.correct_option.strip():
+            return JSONResponse(
+                status_code=400,
+                content={
+                    "status": 400,
+                    "error": "'correct_option' cannot be empty"
+                }
+            )
+        
+        # Validate single character
+        if len(question.correct_option) != 1:
+            return JSONResponse(
+                status_code=400,
+                content={
+                    "status": 400,
+                    "error": "correct_option must be a single character"
+                }
+            )
+        
+        # Validate it exists in options
+        current_options = json.loads(db_question.options)
+        if question.correct_option not in current_options:
+            return JSONResponse(
+                status_code=400,
+                content={
+                    "status": 400,
+                    "error": "correct_option must be one of the option keys"
+                }
+            )
+        
+        db_question.correct_option = question.correct_option
 
     # Update category_id if provided
     if question.category_id is not None:
@@ -206,9 +324,9 @@ def update_question(
             models.Category.id == question.category_id
         ).first()
         if not category:
-            return JSONResponse(status_code=404, content = {
-                "status" : 404,
-                "error" : "Category not found"
+            return JSONResponse(status_code=404, content={
+                "status": 404,
+                "error": "Category not found"
             })
         db_question.category_id = question.category_id
 
@@ -218,60 +336,21 @@ def update_question(
             models.Subcategory.id == question.sub_category_id
         ).first()
         if not subcategory:
-            return JSONResponse(status_code=404, content = {
-                "status" : 404,
-                "error" : "Subcategory not found"
+            return JSONResponse(status_code=404, content={
+                "status": 404,
+                "error": "Subcategory not found"
             })
 
         # Ensure subcategory belongs to the category
         if subcategory.category_id != db_question.category_id:
             return JSONResponse(
                 status_code=400,
-                content = {
-                    "status" : 400,
-                    "error" : "Subcategory does not belong to the question's category"
+                content={
+                    "status": 400,
+                    "error": "Subcategory does not belong to the question's category"
                 }
             )
         db_question.sub_category_id = question.sub_category_id
-
-    # Update question_text if provided
-    if question.question_text is not None:
-        db_question.question_text = question.question_text
-
-    # Update options if provided
-    if question.options is not None:
-        # Validate correct_option still exists in new options if correct_option not being updated
-        if question.correct_option is None and db_question.correct_option not in question.options:
-            return JSONResponse(
-                status_code=400,
-                content = {
-                    "status" : 400,
-                    "error" : f"Current correct option '{db_question.correct_option}' must exist in new options"
-                })
-        db_question.options = json.dumps(question.options)
-
-    # Update correct_option if provided
-    if question.correct_option is not None:
-        # Validate it exists in options
-        current_options = json.loads(db_question.options)
-        if question.correct_option not in current_options:
-            return JSONResponse(
-                status_code=400,
-                content = {
-                    "status" : 400,
-                    "error" : "correct option must be one of the option keys"
-                })
-
-        # Validate single character
-        if len(question.correct_option) != 1:
-            return JSONResponse(
-                status_code=400,
-                content = {
-                    "status" : 400,
-                    "error" : "correct option must be a single character"
-                })
-
-        db_question.correct_option = question.correct_option
 
     # Update difficulty if provided
     if question.difficulty is not None:
@@ -284,7 +363,6 @@ def update_question(
     db_question.options = json.loads(db_question.options)
 
     return db_question
-
 
 # Delete question - Only Admin can delete
 @router.delete("/{question_id}")

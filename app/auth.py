@@ -53,7 +53,7 @@ def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(
     # Validates JWT token and returns the authenticated user.
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
-        details={
+        detail={
             "status": 401,
             "error": "Could not validate credentials"
         },
@@ -85,7 +85,7 @@ def require_admin(current_user: models.User = Depends(get_current_user)):
     if current_user.role.role_name != "Admin":
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            details={
+            detail={
                 "status": 403,
                 "error": "Only Admin can perform this action"
             })
@@ -98,7 +98,7 @@ def require_creator_or_admin(current_user: models.User = Depends(get_current_use
     if current_user.role.role_name not in ["Admin", "Creator"]:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            details={
+            detail={
                 "status": 403,
                 "error": "Only Admin or Creator can perform this action"
             })
@@ -113,7 +113,7 @@ def require_self_or_admin(user_id: int, current_user: models.User = Depends(get_
     if current_user.role.role_name != "Admin" and current_user.id != user_id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            details={
+            detail={
                 "status": 403,
                 "error": "You can only access your own resources"
             })
