@@ -18,8 +18,6 @@ def format_time(seconds: int) -> str:
     return f"{minutes:02d}:{secs:02d}"
 
 
-
-# SUBMIT TEST (Public - No Auth)
 # SUBMIT TEST (Public - No Auth)
 @router.post("/submit")
 def submit_test(
@@ -148,6 +146,7 @@ def submit_test(
             }
         }
     )
+
 
 # GET RESULT BY CANDIDATE ID (Admin/Creator Only)
 @router.get("/result/{candidate_id}", response_model=schemas.CandidateResultResponse)
