@@ -73,6 +73,19 @@ def submit_test(
                 }
             )
     
+    # Validation 5: Selected option must be A, B, C, or D
+    valid_options = {'A', 'B', 'C', 'D'}
+    for idx, answer in enumerate(submission.answers, start=1):
+        selected = answer.selected.strip().upper()
+        if selected not in valid_options:
+            return JSONResponse(
+                status_code=400,
+                content={
+                    "status": 400,
+                    "error": f"Question {idx} has invalid option '{answer.selected}'. Only A, B, C, or D are allowed."
+                }
+            )
+
     # Check if candidate already exists by email
     db_candidate = db.query(models.Candidate).filter(
         models.Candidate.email == submission.email
