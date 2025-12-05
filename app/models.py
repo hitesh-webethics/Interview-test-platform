@@ -88,34 +88,30 @@ class Test(Base):
 
     creator = relationship("User", backref="tests")
 
-
-# Candidate Table
+# Candidate Table (UPDATED
 class Candidate(Base):
     __tablename__ = "candidates"
 
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String(150), nullable=False)
-    email = Column(String(200), nullable=False)
-    test_id = Column(Integer, ForeignKey("tests.id", ondelete="CASCADE"), nullable=False)
-    time_taken = Column(Integer, nullable=False)  # Store as seconds (e.g., 71 for "01:11")
+    email = Column(String(200), nullable=False, unique=True)  # Make email unique
     created_at = Column(TIMESTAMP(timezone=True), server_default=func.now())
 
-    # Relationships
-    test = relationship("Test", backref="candidates")
+    # No direct test relationship - candidate can take multiple tests
 
 
-# Response Table (NEW - Add this AFTER Candidate model)
+# Response Table (UPDATED - Add time_taken)
 class Response(Base):
     __tablename__ = "responses"
 
     id = Column(Integer, primary_key=True, index=True)
     candidate_id = Column(Integer, ForeignKey("candidates.id", ondelete="CASCADE"), nullable=False)
     test_id = Column(Integer, ForeignKey("tests.id", ondelete="CASCADE"), nullable=False)
-    question_id = Column(String(100), nullable=False)  # Store the questionId from frontend
-    selected_option = Column(String(10), nullable=False)  # Store exactly as received: "A", "B", "C", "D"
-    is_correct = Column(Boolean, nullable=False)
+    answers = Column(Text, nullable=False)
+    score = Column(Integer, nullable=False)
+    time_taken = Column(Integer, nullable=False)  # Moved here from candidates
     answered_at = Column(TIMESTAMP(timezone=True), server_default=func.now())
 
-    # Relationships (using backref)
+    # Relationships
     candidate = relationship("Candidate", backref="responses")
     test = relationship("Test", backref="responses")

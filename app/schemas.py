@@ -187,13 +187,19 @@ class TestDetailResponse(BaseModel):
         from_attributes = True
 
 
-# CANDIDATE & RESPONSE SCHEMAS (SIMPLIFIED)
+# CANDIDATE & RESPONSE SCHEMAS
 
 # Individual Answer Item
 class AnswerItem(BaseModel):
     questionId: str
     selected: str
 
+# Answer with validation result
+class AnswerWithValidation(BaseModel):
+    questionId: str
+    selected: str
+    correct: str
+    isCorrect: bool
 
 # Candidate Submission
 class CandidateCreate(BaseModel):
@@ -209,8 +215,6 @@ class CandidateResponse(BaseModel):
     id: int
     name: str
     email: str
-    test_id: int
-    time_taken: int
     created_at: datetime
     
     class Config:
@@ -246,7 +250,6 @@ class CandidateDetailResponse(BaseModel):
     
     class Config:
         from_attributes = True
-
 
 # Full Result Response
 class CandidateResultResponse(BaseModel):
