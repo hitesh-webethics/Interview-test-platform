@@ -198,7 +198,7 @@ def get_candidate_result(
         )
     
     # Get test and questions data
-    test = db.query(models.Test).filter(models.Test.id == candidate.test_id).first()
+    test = db.query(models.Test).filter(models.Test.id == response.test_id).first()
     questions_data = json.loads(test.questions_data)
     questions_map = {str(q["question_id"]): q for q in questions_data}
     
