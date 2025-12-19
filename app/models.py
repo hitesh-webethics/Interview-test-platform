@@ -33,11 +33,13 @@ class User(Base):
 # Category Table
 class Category(Base):
     __tablename__ = "categories"
-    
+
     id = Column(Integer, primary_key=True, index=True)
-    name = Column(String(100), unique=True, nullable=False)
+    name = Column(String(150), nullable=False)
+    parent_category = Column(String(150), nullable=True)
     description = Column(Text, nullable=True)
-    user_id = Column(Integer, ForeignKey("users.id")) # Foreign Key connectes category to user.id
+    # question_count removed
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     created_at = Column(TIMESTAMP(timezone=True), server_default=func.now())
     
     # Relationships
@@ -45,25 +47,13 @@ class Category(Base):
     
     # sub_categories = relationship("Subcategory", backref="category", cascade="all, delete", passive_deletes=True)
 
-# Subcategory Table
-class Subcategory(Base):
-    __tablename__ = "subcategories"
-
-    id = Column(Integer, primary_key=True, index=True)
-    category_id = Column(Integer, ForeignKey("categories.id")) # Foreign Key connects subcategory to category
-    name = Column(String(100), nullable=False)
-    created_at = Column(TIMESTAMP(timezone=True), server_default=func.now())
-
-    # Relationship
-    category = relationship("Category", backref="sub_categories", cascade="all, delete", passive_deletes=True)
-
 # Questions Table
 class Question(Base):
     __tablename__ = "questions"
     
     id = Column(Integer, primary_key=True, index=True)
     category_id = Column(Integer, ForeignKey("categories.id", ondelete="CASCADE"))
-    sub_category_id = Column(Integer, ForeignKey("subcategories.id", ondelete="SET NULL"), nullable=True)  # Optional
+    # sub_category_id removed
     question_text = Column(Text, nullable=False)
     options = Column(Text, nullable=False)  # Stored as JSON string
     correct_option = Column(String(1), nullable=False)  # Single character: 'a', 'b', 'c', 'd'
@@ -72,7 +62,6 @@ class Question(Base):
     created_at = Column(TIMESTAMP(timezone=True), server_default=func.now())
 
     category = relationship("Category")
-    sub_category = relationship("Subcategory")
     creator = relationship("User", backref="questions")
 
 

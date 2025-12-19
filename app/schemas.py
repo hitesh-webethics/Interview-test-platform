@@ -59,6 +59,7 @@ class UserResponse(UserBase):
 # Category Schemas
 class CategoryBase(BaseModel):
     name: str
+    parent_category: Optional[str] = None
     description: Optional[str] = None
 
 class CategoryCreate(CategoryBase):
@@ -66,31 +67,12 @@ class CategoryCreate(CategoryBase):
 
 class CategoryUpdate(BaseModel):
     name: Optional[str] = None
+    parent_category: Optional[str] = None
     description: Optional[str] = None
 
 class CategoryResponse(CategoryBase):
     id: int
     user_id: int
-    created_at: datetime
-    question_count: Optional[int] = 0
-
-    class Config:
-        from_attributes = True
-
-# Subcategory Schemas
-class SubcategoryBase(BaseModel):
-    name: str
-    category_id: int
-
-class SubcategoryCreate(SubcategoryBase):
-    pass
-
-class SubcategoryUpdate(BaseModel):
-    name: Optional[str] = None
-    category_id: Optional[int] = None
-
-class SubcategoryResponse(SubcategoryBase):
-    id: int
     created_at: datetime
     question_count: Optional[int] = 0
 
@@ -108,7 +90,7 @@ class DifficultyEnum(str, Enum):
 # Question Schemas
 class QuestionBase(BaseModel):
     category_id: int
-    sub_category_id: Optional[int] = None  # Optional - if None, question is directly under category
+    # sub_category_id removed
     question_text: str
     options: Dict[str, str]  # Example: {"a": "Option A", "b": "Option B", "c": "Option C", "d": "Option D"}
     correct_option: str  # Single character: 'a', 'b', 'c', or 'd'
@@ -121,7 +103,7 @@ class QuestionCreate(QuestionBase):
 
 class QuestionUpdate(BaseModel):
     category_id: Optional[int] = None
-    sub_category_id: Optional[int] = None
+    # sub_category_id removed
     question_text: Optional[str] = None
     options: Optional[Dict[str, str]] = None
     correct_option: Optional[str] = None
@@ -131,7 +113,10 @@ class QuestionUpdate(BaseModel):
 class QuestionResponse(BaseModel):
     id: int
     category_id: int
-    sub_category_id: Optional[int]
+    category_id: int
+    # sub_category_id removed
+    category_name: str  # Category name
+    # subcategory_name removed or optional None
     question_text: str
     options: Dict[str, str]  # Will be converted from JSON string
     correct_option: str
@@ -140,10 +125,17 @@ class QuestionResponse(BaseModel):
     created_at: datetime
     
 
+class QuestionPaginatedResponse(BaseModel):
+    items: List[Dict]
+    total: int
+    page: int
+    per_page: int
+
+
 class QuestionCategory(BaseModel):
     id: int
     name: str
-    subcategory: Optional[str] = None
+    # subcategory removed
     
     class Config:
         from_attributes = True
@@ -188,7 +180,6 @@ class TestDetailResponse(BaseModel):
 
 
 # CANDIDATE & RESPONSE SCHEMAS
-
 # Individual Answer Item
 class AnswerItem(BaseModel):
     questionId: str
@@ -231,7 +222,7 @@ class QuestionBreakdown(BaseModel):
     options: Dict[str, str]
     difficulty: str
     category_name: str
-    subcategory_name: Optional[str] = None
+    # subcategory_name removed
 
 
 # Candidate Detail with Score

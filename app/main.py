@@ -1,15 +1,25 @@
 from fastapi import FastAPI, Request, status
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from app.models import Base
 from app import models
 from app.database import engine
-from app.routes import auth, roles, users, categories, subcategories, questions, test, candidates
+from app.routes import auth, roles, users, categories, questions, test, candidates
 
 models.Base.metadata.create_all(bind=engine)
 
 app = FastAPI(title="Interview Test Platform")
+
+# ADD CORS MIDDLEWARE (Add this BEFORE routes)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:3000"],  # Frontend URL
+    allow_credentials=True,
+    allow_methods=["*"],  # Allow all methods (GET, POST, etc.)
+    allow_headers=["*"],  # Allow all headers
+)
 
 @app.exception_handler(RequestValidationError)
 async def validation_exception_handler(request: Request, exc: RequestValidationError):
@@ -63,7 +73,7 @@ app.include_router(auth.router)
 app.include_router(roles.router)
 app.include_router(users.router)
 app.include_router(categories.router)
-app.include_router(subcategories.router)
+# app.include_router(subcategories.router) removed
 app.include_router(questions.router)
 app.include_router(test.router)
 app.include_router(candidates.router)

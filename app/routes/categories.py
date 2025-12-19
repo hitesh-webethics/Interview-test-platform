@@ -35,7 +35,8 @@ def create_category(
     db_category = models.Category(
         name=category.name,
         description=category.description,
-        user_id=current_user.id
+        user_id=current_user.id,
+        parent_category=category.parent_category
     )
 
     db.add(db_category)
@@ -49,7 +50,30 @@ def get_categories(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_user)
 ):
-    return db.query(models.Category).all()
+    # Get all categories
+    categories = db.query(models.Category).all()
+    
+    # Add question_count to each category
+    result = []
+    for category in categories:
+        # Count questions for this category
+        question_count = db.query(models.Question).filter(
+            models.Question.category_id == category.id
+        ).count()
+        
+        # Build response dict with question_count
+        category_dict = {
+            "id": category.id,
+            "name": category.name,
+            "description": category.description,
+            "parent_category": category.parent_category,
+            "user_id": category.user_id,
+            "created_at": category.created_at.isoformat(),
+            "question_count": question_count
+        }
+        result.append(category_dict)
+    
+    return result
 
 # Get single category by ID - Any authenticated user
 # Get single category by ID with question count - Any authenticated user
@@ -79,6 +103,7 @@ def get_category(
         "id": db_category.id,
         "name": db_category.name,
         "description": db_category.description,
+        "parent_category": db_category.parent_category,
         "user_id": db_category.user_id,
         "created_at": db_category.created_at.isoformat(),
         "question_count": question_count
@@ -125,6 +150,9 @@ def update_category(
 
     if category.description is not None:
         db_category.description = category.description
+
+    if category.parent_category is not None:
+        db_category.parent_category = category.parent_category
 
     db.commit()
     db.refresh(db_category)

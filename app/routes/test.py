@@ -20,7 +20,7 @@ def generate_test_code() -> str:
 def get_test_questions(
     category_id: int = Query(..., description="Category ID (required)"),
     difficulty: schemas.DifficultyEnum = Query(..., description="Difficulty level: Easy, Medium, or Hard"),
-    sub_category_id: Optional[int] = Query(None, description="Subcategory ID (optional)"),
+    # sub_category_id removed
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_user)
 ):
@@ -48,26 +48,12 @@ def get_test_questions(
     )
     
     # If subcategory is provided, validate and filter by it
-    if sub_category_id is not None:
-        subcategory = db.query(models.Subcategory).filter(
-            models.Subcategory.id == sub_category_id
-        ).first()
-        
-        if not subcategory:
-            raise HTTPException(status_code=404, detail="Subcategory not found")
-        
-        # Ensure subcategory belongs to the specified category
-        if subcategory.category_id != category_id:
-            raise HTTPException(
-                status_code=400,
-                detail="Subcategory does not belong to the specified category"
-            )
-        
-        # Filter by subcategory
-        query = query.filter(models.Question.sub_category_id == sub_category_id)
-    else:
+    # Subcategory filtering logic removed
+    # if sub_category_id is not None:
+        # ... logic removed ...
+    # else:
         # If no subcategory specified, get questions directly under category (no subcategory)
-        query = query.filter(models.Question.sub_category_id == None)
+        # query = query.filter(models.Question.sub_category_id == None)
     
     # Execute query
     questions = query.all()
@@ -150,7 +136,7 @@ def create_test(
             "category": {
                 "id": question.category.id,
                 "name": question.category.name,
-                "subcategory": question.category.subcategory
+                # "subcategory": question.category.subcategory
             },
             "question": question.question,
             "difficulty": question.difficulty,

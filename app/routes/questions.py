@@ -25,7 +25,7 @@ def create_question(
                 "error": "question_text is a required field and cannot be empty"
             }
         )
-    
+
     # Validate options is not empty
     if not question.options or len(question.options) == 0:
         return JSONResponse(
@@ -35,7 +35,7 @@ def create_question(
                 "error": "options is a required field and cannot be empty"
             }
         )
-    
+
     # Validate each option value is not empty
     for key, value in question.options.items():
         if not value or not value.strip():
@@ -46,7 +46,7 @@ def create_question(
                     "error": f"Option '{key}' cannot be empty"
                 }
             )
-    
+
     # Validate correct_option is not empty
     if not question.correct_option or not question.correct_option.strip():
         return JSONResponse(
@@ -68,25 +68,9 @@ def create_question(
         })
 
     # Validate subcategory if provided
-    if question.sub_category_id is not None:
-        subcategory = db.query(models.Subcategory).filter(
-            models.Subcategory.id == question.sub_category_id
-        ).first()
-        if not subcategory:
-            return JSONResponse(status_code=404, content={
-                "status": 404,
-                "error": "Subcategory not found"
-            })
-
-        # Ensure subcategory belongs to the specified category
-        if subcategory.category_id != question.category_id:
-            return JSONResponse(
-                status_code=400,
-                content={
-                    "status": 400,
-                    "error": "Subcategory does not belong to the specified category"
-                }
-            )
+    # Subcategory removed - merged into Category
+    # if question.sub_category_id is not None:
+        # ... validation logic removed ...
 
     # Validate correct_option is one of the option keys
     if question.correct_option not in question.options:
@@ -114,7 +98,7 @@ def create_question(
     # Create question
     db_question = models.Question(
         category_id=question.category_id,
-        sub_category_id=question.sub_category_id,
+        # sub_category_id removed
         question_text=question.question_text,
         options=options_json,
         correct_option=question.correct_option,
@@ -133,11 +117,14 @@ def create_question(
 
 
 # Get all questions with optional filters - Any authenticated user
-@router.get("/", response_model=list[schemas.QuestionResponse])
+@router.get("/", response_model=schemas.QuestionPaginatedResponse)
+@router.get("/", response_model=schemas.QuestionPaginatedResponse)
 def get_questions(
     category_id: Optional[int] = Query(None, description="Filter by category ID"),
-    sub_category_id: Optional[int] = Query(None, description="Filter by subcategory ID"),
+    # sub_category_id argument removed
     difficulty: Optional[schemas.DifficultyEnum] = Query(None, description="Filter by difficulty: Easy, Medium, or Hard"),
+    page: int = Query(1, ge=1, description="Page number (starts from 1)"),
+    per_page: int = Query(10, ge=1, le=100, description="Items per page"),
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_user)
 ):
@@ -156,44 +143,63 @@ def get_questions(
                 "status" : 404,
                 "error" : "Category not found"
             })
-        
+
         query = query.filter(models.Question.category_id == category_id)
 
-    # Apply subcategory filter if provided
-    if sub_category_id is not None:
-        # Validate subcategory exists
-        subcategory = db.query(models.Subcategory).filter(
-            models.Subcategory.id == sub_category_id
-        ).first()
-        if not subcategory:
-            return JSONResponse(status_code=404, content = {
-                "status" : 404,
-                "error" : "Subcategory not found"
-            })
+        query = query.filter(models.Question.category_id == category_id)
 
-        # If category_id is also provided, ensure subcategory belongs to it
-        if category_id is not None and subcategory.category_id != category_id:
-            return JSONResponse(
-                status_code=400,
-                content = {
-                    "status" : 400,
-                    "error" : "Subcategory does not belong to the specified category"
-                })
-        
-        query = query.filter(models.Question.sub_category_id == sub_category_id)
+    # Subcategory filter removed
 
     # Apply difficulty filter if provided
     if difficulty is not None:
         query = query.filter(models.Question.difficulty == difficulty.value)
 
-    # Execute query
-    questions = query.all()
+    # Get total count before pagination
+    total = query.count()
 
-    # Convert options from JSON string to dict for each question
+    # Calculate skip value
+    skip = (page - 1) * per_page
+
+    # Execute query with pagination
+    questions = query.offset(skip).limit(per_page).all()
+
+    # Build response with category and subcategory names
+    result = []
     for question in questions:
-        question.options = json.loads(question.options)
+        # Get category name
+        category = db.query(models.Category).filter(
+            models.Category.id == question.category_id
+        ).first()
+        category_name = category.name if category else "Unknown"
 
-    return questions
+        # Get subcategory name (if exists)
+        # subcategory_name removed
+
+        # Convert options from JSON string to dict
+        options_dict = json.loads(question.options)
+
+        # Build response dict
+        question_dict = {
+            "id": question.id,
+            "category_id": question.category_id,
+            # "sub_category_id": question.sub_category_id,
+            "category_name": category_name,  # ← NEW
+            # "subcategory_name": subcategory_name,  # ← NEW
+            "question_text": question.question_text,
+            "options": options_dict,
+            "correct_option": question.correct_option,
+            "difficulty": question.difficulty,
+            "user_id": question.user_id,
+            "created_at": question.created_at.isoformat()
+        }
+        result.append(question_dict)
+
+    return {
+        "items": result,
+        "total": total,
+        "page": page,
+        "per_page": per_page
+    }
 
 
 # Get single question by ID - Any authenticated user
@@ -215,11 +221,36 @@ def get_question(
             "error" : "Question not found"
         })
 
+
+    # Get category and subcategory names
+    # Get category name
+    category = db.query(models.Category).filter(
+        models.Category.id == db_question.category_id
+    ).first()
+    category_name = category.name if category else "Unknown"
+
+    # Get subcategory name (if exists)
+    # subcategory_name removed
+
     # Convert options from JSON string to dict
-    db_question.options = json.loads(db_question.options)
+    options_dict = json.loads(db_question.options)
 
-    return db_question
+    # Build response dict
+    question_dict = {
+        "id": db_question.id,
+        "category_id": db_question.category_id,
+        # "sub_category_id": db_question.sub_category_id,
+        "category_name": category_name,  # ← NEW
+        # "subcategory_name": subcategory_name,  # ← NEW
+        "question_text": db_question.question_text,
+        "options": options_dict,
+        "correct_option": db_question.correct_option,
+        "difficulty": db_question.difficulty,
+        "user_id": db_question.user_id,
+        "created_at": db_question.created_at.isoformat()
+    }
 
+    return question_dict
 
 # Update question - Admin or creator can update
 @router.put("/{question_id}", response_model=schemas.QuestionResponse)
@@ -261,7 +292,7 @@ def update_question(
                     "error": "'options' cannot be empty"
                 }
             )
-        
+
         # Validate each option value is not empty
         for key, value in question.options.items():
             if not value or not value.strip():
@@ -272,7 +303,7 @@ def update_question(
                         "error": f"Option '{key}' cannot be empty"
                     }
                 )
-        
+
         # Validate correct_option still exists in new options if correct_option not being updated
         if question.correct_option is None and db_question.correct_option not in question.options:
             return JSONResponse(
@@ -294,7 +325,7 @@ def update_question(
                     "error": "'correct_option' cannot be empty"
                 }
             )
-        
+
         # Validate single character
         if len(question.correct_option) != 1:
             return JSONResponse(
@@ -304,7 +335,7 @@ def update_question(
                     "error": "correct_option must be a single character"
                 }
             )
-        
+
         # Validate it exists in options
         current_options = json.loads(db_question.options)
         if question.correct_option not in current_options:
@@ -315,7 +346,7 @@ def update_question(
                     "error": "correct_option must be one of the option keys"
                 }
             )
-        
+
         db_question.correct_option = question.correct_option
 
     # Update category_id if provided
@@ -331,26 +362,7 @@ def update_question(
         db_question.category_id = question.category_id
 
     # Update sub_category_id if provided
-    if question.sub_category_id is not None:
-        subcategory = db.query(models.Subcategory).filter(
-            models.Subcategory.id == question.sub_category_id
-        ).first()
-        if not subcategory:
-            return JSONResponse(status_code=404, content={
-                "status": 404,
-                "error": "Subcategory not found"
-            })
-
-        # Ensure subcategory belongs to the category
-        if subcategory.category_id != db_question.category_id:
-            return JSONResponse(
-                status_code=400,
-                content={
-                    "status": 400,
-                    "error": "Subcategory does not belong to the question's category"
-                }
-            )
-        db_question.sub_category_id = question.sub_category_id
+    # sub_category_id removed
 
     # Update difficulty if provided
     if question.difficulty is not None:
