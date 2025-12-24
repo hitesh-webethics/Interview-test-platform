@@ -64,12 +64,16 @@ class Question(Base):
     category = relationship("Category")
     creator = relationship("User", backref="questions")
 
+    @property
+    def category_name(self):
+        return self.category.name if self.category else "Unknown"
 
 # Test Table
 class Test(Base):
     __tablename__ = "tests"
 
     id = Column(Integer, primary_key=True, index=True)
+    test_name = Column(String(200), nullable=True)
     test_code = Column(String(100), unique=True, nullable=False, index=True)
     questions_data = Column(Text, nullable=False)  # Stores complete question data as JSON array
     user_id = Column(Integer, ForeignKey("users.id"))
@@ -96,6 +100,7 @@ class Response(Base):
     id = Column(Integer, primary_key=True, index=True)
     candidate_id = Column(Integer, ForeignKey("candidates.id", ondelete="CASCADE"), nullable=False)
     test_id = Column(Integer, ForeignKey("tests.id", ondelete="CASCADE"), nullable=False)
+    test_name = Column(String(200), nullable=True)  # Added to store test name at time of submission
     answers = Column(Text, nullable=False)
     score = Column(Integer, nullable=False)
     time_taken = Column(Integer, nullable=False)  # Moved here from candidates

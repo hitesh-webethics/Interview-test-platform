@@ -18,7 +18,6 @@ class Token(BaseModel):
 class TokenData(BaseModel):
     user_id: Optional[int] = None
 
-
 # Role Schemas
 class RoleBase(BaseModel):
     role_name: str
@@ -90,7 +89,6 @@ class DifficultyEnum(str, Enum):
 # Question Schemas
 class QuestionBase(BaseModel):
     category_id: int
-    # sub_category_id removed
     question_text: str
     options: Dict[str, str]  # Example: {"a": "Option A", "b": "Option B", "c": "Option C", "d": "Option D"}
     correct_option: str  # Single character: 'a', 'b', 'c', or 'd'
@@ -109,14 +107,10 @@ class QuestionUpdate(BaseModel):
     correct_option: Optional[str] = None
     difficulty: Optional[DifficultyEnum] = None
 
-
 class QuestionResponse(BaseModel):
     id: int
     category_id: int
-    category_id: int
-    # sub_category_id removed
-    category_name: str  # Category name
-    # subcategory_name removed or optional None
+    category_name: str
     question_text: str
     options: Dict[str, str]  # Will be converted from JSON string
     correct_option: str
@@ -135,7 +129,6 @@ class QuestionPaginatedResponse(BaseModel):
 class QuestionCategory(BaseModel):
     id: int
     name: str
-    # subcategory removed
     
     class Config:
         from_attributes = True
@@ -151,33 +144,34 @@ class TestQuestionData(BaseModel):
     difficulty: str  # "Easy", "Medium", "Hard"
     user_id: int
 
-
 # Test Create Schema
 class TestCreate(BaseModel):
+    test_name: Optional[str] = None
     questions: List[TestQuestionData]
 
 
 # Test Response Schema
 class TestResponse(BaseModel):
     test_id: int
+    test_name: Optional[str] = None
     test_code: str
     question_count: int
     
     class Config:
         from_attributes = True
 
-
 # Test Detail Response Schema
 class TestDetailResponse(BaseModel):
     id: int
+    test_name: Optional[str] = None
     test_code: str
     questions_data: List[TestQuestionData]  # Returns the complete question array
     user_id: int
+    candidate_count: Optional[int] = 0
     created_at: datetime
     
     class Config:
         from_attributes = True
-
 
 # CANDIDATE & RESPONSE SCHEMAS
 # Individual Answer Item
@@ -200,6 +194,18 @@ class CandidateCreate(BaseModel):
     timeTaken: int
     answers: List[AnswerItem]
 
+# Public Test View (For Candidates)
+class PublicTestQuestion(BaseModel):
+    question_id: int
+    question: str
+    options: Dict[str, str]
+    difficulty: str
+    category_name: str
+
+class PublicTestResponse(BaseModel):
+    test_name: Optional[str] = None
+    test_code: str
+    questions: List[PublicTestQuestion]
 
 # Basic Candidate Response
 class CandidateResponse(BaseModel):
@@ -211,7 +217,6 @@ class CandidateResponse(BaseModel):
     class Config:
         from_attributes = True
 
-
 # Question Breakdown for Results
 class QuestionBreakdown(BaseModel):
     question_id: str
@@ -222,8 +227,6 @@ class QuestionBreakdown(BaseModel):
     options: Dict[str, str]
     difficulty: str
     category_name: str
-    # subcategory_name removed
-
 
 # Candidate Detail with Score
 class CandidateDetailResponse(BaseModel):
@@ -232,6 +235,7 @@ class CandidateDetailResponse(BaseModel):
     email: str
     test_id: int
     test_code: str
+    test_name: Optional[str] = None
     time_taken: int
     time_taken_formatted: str
     total_questions: int
@@ -254,6 +258,7 @@ class CandidateListItem(BaseModel):
     name: str
     email: str
     test_code: str
+    test_name: Optional[str] = None
     score: str
     score_percentage: int
     time_taken_formatted: str

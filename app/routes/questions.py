@@ -67,11 +67,6 @@ def create_question(
             "error": "Category not found"
         })
 
-    # Validate subcategory if provided
-    # Subcategory removed - merged into Category
-    # if question.sub_category_id is not None:
-        # ... validation logic removed ...
-
     # Validate correct_option is one of the option keys
     if question.correct_option not in question.options:
         return JSONResponse(
@@ -118,13 +113,13 @@ def create_question(
 
 # Get all questions with optional filters - Any authenticated user
 @router.get("/", response_model=schemas.QuestionPaginatedResponse)
-@router.get("/", response_model=schemas.QuestionPaginatedResponse)
 def get_questions(
     category_id: Optional[int] = Query(None, description="Filter by category ID"),
-    # sub_category_id argument removed
+    parent_category: Optional[str] = Query(None, description="Filter by parent category name"),
     difficulty: Optional[schemas.DifficultyEnum] = Query(None, description="Filter by difficulty: Easy, Medium, or Hard"),
+    search: Optional[str] = Query(None, description="Search term for question text"),
     page: int = Query(1, ge=1, description="Page number (starts from 1)"),
-    per_page: int = Query(10, ge=1, le=100, description="Items per page"),
+    per_page: int = Query(10, ge=1, le=10000, description="Items per page"),
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_user)
 ):
@@ -146,13 +141,17 @@ def get_questions(
 
         query = query.filter(models.Question.category_id == category_id)
 
-        query = query.filter(models.Question.category_id == category_id)
-
-    # Subcategory filter removed
+    # Apply parent category filter if provided
+    if parent_category:
+        query = query.join(models.Category).filter(models.Category.parent_category == parent_category)
 
     # Apply difficulty filter if provided
     if difficulty is not None:
         query = query.filter(models.Question.difficulty == difficulty.value)
+
+    # Apply search filter if provided
+    if search:
+        query = query.filter(models.Question.question_text.ilike(f"%{search}%"))
 
     # Get total count before pagination
     total = query.count()
@@ -172,9 +171,6 @@ def get_questions(
         ).first()
         category_name = category.name if category else "Unknown"
 
-        # Get subcategory name (if exists)
-        # subcategory_name removed
-
         # Convert options from JSON string to dict
         options_dict = json.loads(question.options)
 
@@ -182,9 +178,7 @@ def get_questions(
         question_dict = {
             "id": question.id,
             "category_id": question.category_id,
-            # "sub_category_id": question.sub_category_id,
-            "category_name": category_name,  # ← NEW
-            # "subcategory_name": subcategory_name,  # ← NEW
+            "category_name": category_name,
             "question_text": question.question_text,
             "options": options_dict,
             "correct_option": question.correct_option,
@@ -222,15 +216,11 @@ def get_question(
         })
 
 
-    # Get category and subcategory names
     # Get category name
     category = db.query(models.Category).filter(
         models.Category.id == db_question.category_id
     ).first()
     category_name = category.name if category else "Unknown"
-
-    # Get subcategory name (if exists)
-    # subcategory_name removed
 
     # Convert options from JSON string to dict
     options_dict = json.loads(db_question.options)
@@ -239,9 +229,7 @@ def get_question(
     question_dict = {
         "id": db_question.id,
         "category_id": db_question.category_id,
-        # "sub_category_id": db_question.sub_category_id,
-        "category_name": category_name,  # ← NEW
-        # "subcategory_name": subcategory_name,  # ← NEW
+        "category_name": category_name,
         "question_text": db_question.question_text,
         "options": options_dict,
         "correct_option": db_question.correct_option,
@@ -360,9 +348,6 @@ def update_question(
                 "error": "Category not found"
             })
         db_question.category_id = question.category_id
-
-    # Update sub_category_id if provided
-    # sub_category_id removed
 
     # Update difficulty if provided
     if question.difficulty is not None:

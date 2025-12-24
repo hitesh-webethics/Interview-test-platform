@@ -132,6 +132,7 @@ def submit_test(
     db_response = models.Response(
         candidate_id=db_candidate.id,
         test_id=test.id,
+        test_name=test.test_name,  # Save test name from test table
         answers=json.dumps(validated_answers),
         score=correct_count,
         time_taken=submission.timeTaken
@@ -158,6 +159,45 @@ def submit_test(
                 "answered_at": db_response.answered_at.isoformat()
             }
         }
+    )
+
+# GET TEST FOR CANDIDATE (Public - No Auth)
+@router.get("/test/{test_code}", response_model=schemas.PublicTestResponse)
+def get_public_test(
+    test_code: str,
+    db: Session = Depends(get_db)
+):
+    # Validation: Test code must exist
+    test = db.query(models.Test).filter(
+        models.Test.test_code == test_code
+    ).first()
+
+    if not test:
+        return JSONResponse(
+            status_code=404,
+            content={
+                "status": 404,
+                "error": "Invalid test code"
+            }
+        )
+
+    # Decode questions and remove answers
+    questions_data = json.loads(test.questions_data)
+    public_questions = []
+    
+    for q in questions_data:
+        public_questions.append(schemas.PublicTestQuestion(
+            question_id=q["question_id"],
+            question=q["question"],
+            options=q["options"],
+            difficulty=q["difficulty"],
+            category_name=q["category"]["name"]
+        ))
+
+    return schemas.PublicTestResponse(
+        test_name=test.test_name,
+        test_code=test.test_code,
+        questions=public_questions
     )
 
 # GET RESULT BY CANDIDATE ID (Admin/Creator Only)
@@ -223,8 +263,7 @@ def get_candidate_result(
                 is_correct=answer["isCorrect"],
                 options=question["options"],
                 difficulty=question.get("difficulty", "Medium"),
-                category_name=question["category"]["name"],
-                subcategory_name=question["category"].get("subcategory")
+                category_name=question["category"]["name"]
             ))
 
     # Build candidate detail response
@@ -234,6 +273,7 @@ def get_candidate_result(
         email=candidate.email,
         test_id=response.test_id,  # From response table
         test_code=test.test_code,
+        test_name=response.test_name,  # From response table
         time_taken=response.time_taken,  # Now from response table
         time_taken_formatted=format_time(response.time_taken),
         total_questions=total_questions,
@@ -298,6 +338,7 @@ def get_all_results(
             name=candidate.name,
             email=candidate.email,
             test_code=test.test_code,
+            test_name=response.test_name,  # From response table
             score=f"{correct_answers}/{total_questions}",
             score_percentage=score_percentage,
             time_taken_formatted=format_time(response.time_taken),

@@ -52,7 +52,7 @@ def get_categories(
 ):
     # Get all categories
     categories = db.query(models.Category).all()
-    
+
     # Add question_count to each category
     result = []
     for category in categories:
@@ -60,7 +60,7 @@ def get_categories(
         question_count = db.query(models.Question).filter(
             models.Question.category_id == category.id
         ).count()
-        
+
         # Build response dict with question_count
         category_dict = {
             "id": category.id,
@@ -72,7 +72,7 @@ def get_categories(
             "question_count": question_count
         }
         result.append(category_dict)
-    
+
     return result
 
 # Get single category by ID - Any authenticated user

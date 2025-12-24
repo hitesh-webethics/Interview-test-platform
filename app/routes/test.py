@@ -47,14 +47,6 @@ def get_test_questions(
         models.Question.difficulty == difficulty.value
     )
     
-    # If subcategory is provided, validate and filter by it
-    # Subcategory filtering logic removed
-    # if sub_category_id is not None:
-        # ... logic removed ...
-    # else:
-        # If no subcategory specified, get questions directly under category (no subcategory)
-        # query = query.filter(models.Question.sub_category_id == None)
-    
     # Execute query
     questions = query.all()
     
@@ -148,6 +140,7 @@ def create_test(
     
     # Create test
     db_test = models.Test(
+        test_name=test_data.test_name,
         test_code=test_code,
         questions_data=questions_json,
         user_id=current_user.id
@@ -160,6 +153,7 @@ def create_test(
     # Return response
     return schemas.TestResponse(
         test_id=db_test.id,
+        test_name=db_test.test_name,
         test_code=db_test.test_code,
         question_count=len(test_data.questions)
     )
@@ -196,11 +190,15 @@ def get_my_tests(
             )
             questions_list.append(question_obj)
         
+        # Get candidate count
+        candidate_count = db.query(models.Response).filter(models.Response.test_id == test.id).count()
         test_dict = {
             "id": test.id,
+            "test_name": test.test_name,
             "test_code": test.test_code,
             "questions_data": questions_list,
             "user_id": test.user_id,
+            "candidate_count": candidate_count,
             "created_at": test.created_at
         }
         result.append(schemas.TestDetailResponse(**test_dict))
@@ -241,8 +239,12 @@ def get_test_by_code(
         )
         questions_list.append(question_obj)
     
+    candidate_count = db.query(models.Response).filter(models.Response.test_id == db_test.id).count()
+
     return schemas.TestDetailResponse(
         id=db_test.id,
+        test_name=db_test.test_name,
+        candidate_count=candidate_count,
         test_code=db_test.test_code,
         questions_data=questions_list,
         user_id=db_test.user_id,
