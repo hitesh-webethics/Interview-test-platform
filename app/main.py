@@ -1,5 +1,5 @@
 import os
-import uvicorn
+# import uvicorn
 from fastapi import FastAPI, Request, status
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
@@ -103,10 +103,10 @@ def test_db_connnection():
     except Exception as e:
         return {"status": "error", "message": str(e)}
     
-# Add this at the very end of main.py
-if __name__ == "__main__":
-    uvicorn.run(
-        "app.main:app",  # Adjust this path to your FastAPI app if necessary
-        host="0.0.0.0",  # Listen on all network interfaces
-        port=8000  # Use Render's dynamic PORT or default to 8000
-    )
+# # Add this at the very end of main.py
+# if __name__ == "__main__":
+#     uvicorn.run(
+#         "app.main:app",  # Adjust this path to your FastAPI app if necessary
+#         host="0.0.0.0",  # Listen on all network interfaces
+#         port=8000  # Use Render's dynamic PORT or default to 8000
+#     )
