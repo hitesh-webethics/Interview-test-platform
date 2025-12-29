@@ -1,4 +1,5 @@
 import os
+import uvicorn
 from fastapi import FastAPI, Request, status
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
@@ -104,6 +105,8 @@ def test_db_connnection():
     
 # Add this at the very end of main.py
 if __name__ == "__main__":
-    import uvicorn
-    port = int(os.environ.get("PORT", 8000))
-    uvicorn.run("app.main:app", host="0.0.0.0", port=port)
+    uvicorn.run(
+        "app.main:app",  # Adjust this path to your FastAPI app if necessary
+        host="0.0.0.0",  # Listen on all network interfaces
+        port=int(os.getenv("PORT", 8000)),  # Use Render's dynamic PORT or default to 8000
+    )
