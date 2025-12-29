@@ -108,5 +108,5 @@ if __name__ == "__main__":
     uvicorn.run(
         "app.main:app",  # Adjust this path to your FastAPI app if necessary
         host="0.0.0.0",  # Listen on all network interfaces
-        port=int(os.getenv("PORT", 8000)),  # Use Render's dynamic PORT or default to 8000
+        port=8000  # Use Render's dynamic PORT or default to 8000
     )
