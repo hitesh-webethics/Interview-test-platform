@@ -75,7 +75,6 @@ app.include_router(auth.router)
 app.include_router(roles.router)
 app.include_router(users.router)
 app.include_router(categories.router)
-# app.include_router(subcategories.router) removed
 app.include_router(questions.router)
 app.include_router(test.router)
 app.include_router(candidates.router)
@@ -114,3 +113,11 @@ if __name__ == "__main__":
         forwarded_allow_ips="*"
     )
     
+if __name__ == "__main__":
+
+    port = int(os.environ.get("PORT", 8000))
+    uvicorn.run(
+        "app.main:app",
+        host="0.0.0.0",
+        port=port
+    )
