@@ -14,13 +14,18 @@ models.Base.metadata.create_all(bind=engine)
 
 app = FastAPI(title="Interview Test Platform")
 
-# ADD CORS MIDDLEWARE (Add this BEFORE routes)
+ALLOWED_ORIGINS = [
+    "http://localhost:3000",  # Local development
+    "https://interview-test-platform-front-end.vercel.app/",
+]
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Allow all origins for now (adjust for production security)
-    allow_credentials=True,
-    allow_methods=["*"],  # Allow all methods (GET, POST, etc.)
-    allow_headers=["*"],  # Allow all headers
+    allow_origins=ALLOWED_ORIGINS,  # Specific origins only
+    allow_credentials=True,  # Required for cookies/auth
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
+    allow_headers=["*"],
+    expose_headers=["*"],
+    max_age=3600,  # Cache preflight requests for 1 hour
 )
 
 @app.exception_handler(RequestValidationError)
