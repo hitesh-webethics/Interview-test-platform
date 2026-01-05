@@ -16,7 +16,7 @@ app = FastAPI(title="Interview Test Platform")
 
 ALLOWED_ORIGINS = [
     "http://localhost:3000",  # Local development
-    "https://interview-test-platform-front-end.vercel.app/",
+    "https://interview-test-platform-front-end.vercel.app",
 ]
 app.add_middleware(
     CORSMiddleware,
